@@ -76,7 +76,10 @@
 
       <div class="sub">Add to Home Screen from Safari to launch full‑screen and work offline.</div>
     </div>
-    <div class="foot">© Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive</div>
+    <div class="foot">
+      © Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive<br>
+      <small style="color:#9aa4b2">Build v08-18-2025-2</small>
+    </div>
   </div>
 
   <script>
@@ -112,9 +115,18 @@
       function parseOdds(raw){
         if(!raw) return null;
         raw = String(raw).trim();
-        if(/^[+-]?\\d+$/.test(raw)) return parseFloat(raw);
-        var cleaned = raw.replace(/[^\\d\\-+]/g,"");
-        if(cleaned === "" || cleaned === "+" || cleaned === "-") return null;
+        if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw); // NOTE: This line is in a JS string! We'll replace with literal below.
+        // (we'll override this function after DOMContentLoaded to ensure literal regex; see below)
+        return parseFloat(raw);
+      }
+
+      // We'll define the real parseOdds with correct regex literals after DOM is loaded to avoid any cross-escaping issues.
+      function realParseOdds(raw){
+        if(!raw) return null;
+        raw = String(raw).trim();
+        if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw);
+        const cleaned = raw.replace(/[^\d\-+]/g, "");
+        if (cleaned === "" || cleaned === "+" || cleaned === "-") return null;
         return parseFloat(cleaned);
       }
 
@@ -130,20 +142,20 @@
         el.value = (cents/100).toLocaleString(undefined,{style:'currency',currency:'USD'});
       }
       function handleWinInput(e){
-        var digits = (e.target.value.match(/\\d/g) || []).join("");
+        var digits = (e.target.value.match(/\d/g) || []).join("");
         var cents = digits === "" ? 0 : parseInt(digits,10);
         setWinCents(cents); calculate();
       }
       function handleWinKeyDown(e){
         var allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];
         if (allowed.indexOf(e.key) !== -1) return;
-        if (/^\\d$/.test(e.key)) return;
+        if (/^\d$/.test(e.key)) return;
         e.preventDefault();
       }
       function pasteDigitsOnly(e){
         e.preventDefault();
         var text = (e.clipboardData || window.clipboardData || {getData:function(){return "";}}).getData("text");
-        var digits = (text.match(/\\d/g) || []).join("");
+        var digits = (text.match(/\d/g) || []).join("");
         var cents = digits === "" ? getWinCents() : parseInt(digits,10);
         setWinCents(cents); calculate();
       }
@@ -162,7 +174,8 @@
       }
 
       function calculate(){
-        var odds = parseOdds(($("odds")||{}).value||"");
+        var po = window.__parseOdds || realParseOdds;
+        var odds = po(($("odds")||{}).value||"");
         var win  = getWinCents() / 100;
         var stake = calcStake(odds, win);
         var stakeEl = $("stake"); if (stakeEl) stakeEl.textContent = money(stake);
@@ -174,7 +187,8 @@
         if (!oddsEl || !winEl || !btn) return false;
 
         btn.addEventListener("click", function(){
-          var n = parseOdds(oddsEl.value);
+          var po = window.__parseOdds || realParseOdds;
+          var n = po(oddsEl.value);
           oddsEl.value = (n == null || !isFinite(n)) ? "-110" : (n * -1).toString();
           calculate();
         });
@@ -186,7 +200,24 @@
       }
 
       function init(){
-        if (!bind()) { setTimeout(init, 50); return; }  // Retry binding if DOM not ready yet
+        // Define the true regex-literal version to avoid any escaping issues
+        window.__parseOdds = function(raw){
+          if(!raw) return null;
+          raw = String(raw).trim();
+          if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw); // placeholder; replaced below
+          return parseFloat(raw);
+        };
+        // Replace with literal regexes
+        window.__parseOdds = function(raw){
+          if(!raw) return null;
+          raw = String(raw).trim();
+          if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw);
+          const cleaned = raw.replace(/[^\d\-+]/g, "");
+          if (cleaned === "" || cleaned === "+" || cleaned === "-") return null;
+          return parseFloat(cleaned);
+        };
+
+        if (!bind()) { setTimeout(init, 50); return; }  // Retry binding if DOM not ready
         $("odds").value = "-110";
         setWinCents(2500);
         calculate();
