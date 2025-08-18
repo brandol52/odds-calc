@@ -8,112 +8,76 @@
   <style>
     :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537;--accent:#22c55e}
     *{box-sizing:border-box}
-
-    /* App-level layout: center content, respect iPhone safe areas */
-    html, body { height: 100%; }
     body{
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:var(--fg);
-      min-height:100vh;
-      display:flex;
-      flex-direction:column; /* sticky footer model */
-      padding-top: env(safe-area-inset-top);
-      padding-bottom: env(safe-area-inset-bottom);
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
+      margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg);color:var(--fg);
+      min-height:100vh;display:flex;flex-direction:column;
+      padding-top:calc(env(safe-area-inset-top) + 12px);
+      padding-bottom:env(safe-area-inset-bottom);
+      padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);
     }
-
-    /* Main centers the card */
-    main{
-      flex:1;
-      display:flex;
-      align-items:center;     /* vertical centering */
-      justify-content:center; /* horizontal centering */
-      padding: 12px;
-    }
-
-    .wrap{ width:100%; max-width:560px; }
-    h1{font-size:18px;margin:10px 0 8px; text-align:center}
+    .wrap{max-width:560px;width:100%;margin:0 auto;padding:16px;flex:1;display:flex;flex-direction:column}
+    h1{font-size:18px;margin:10px 0 12px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
-
-    /* two inputs on one line */
     .inputs-line{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
     label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
-
-    /* Odds line: toggle on the LEFT, then input */
     .odds-line{display:grid;grid-template-columns:56px 1fr;gap:8px}
     .btn{padding:12px;border-radius:12px;border:1px solid var(--border);background:#0d1930;color:var(--fg);font-size:1.05rem;cursor:pointer}
     .btn:active{transform:translateY(1px)}
-
+    .btn-clear{width:100%;margin:10px 0;padding:14px;font-size:1rem;background:#1a2238}
     input[type="text"]{
       width:100%;padding:12px 14px;border-radius:12px;background:#0a1020;color:var(--fg);
       border:1px solid var(--border);outline:none;font-size:1.05rem
     }
     input:focus{border-color:#2dd4bf;box-shadow:0 0 0 .12rem rgba(45,212,191,.16)}
     input.invalid{border-color:#f87171 !important;box-shadow:0 0 0 .12rem rgba(248,113,113,.25)}
-
     .error{color:#f87171;font-size:.85rem;margin-top:4px;display:none}
-
     .stake{margin-top:10px;background:#0a1020;border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
     .stake small{display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px}
     .stake .val{font-weight:900;letter-spacing:.2px;font-size:2rem;color:var(--accent)}
-
-    /* Footer pinned at bottom with safe-area breathing room */
-    footer{
-      color:var(--muted);
-      font-size:.78rem;
-      text-align:center;
-      padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
-      border-top: 1px solid var(--border);
-      background: transparent;
-    }
+    .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:14px 0 8px}
   </style>
 </head>
 <body>
-  <main>
-    <div class="wrap">
-      <h1>American Odds — App Mode</h1>
-      <div class="card">
-        <div class="inputs-line">
-          <div>
-            <label for="odds">American Odds</label>
-            <div class="odds-line">
-              <button type="button" class="btn" id="toggleBtn" aria-label="Switch odds sign" title="Switch odds sign">−</button>
-              <input id="odds" type="text" inputmode="numeric" placeholder="-110 or +145" aria-label="American odds">
-            </div>
-            <div class="error" id="oddsError">Odds must be ≤ -100 or ≥ +100</div>
+  <div class="wrap">
+    <h1>American Odds — App Mode</h1>
+    <div class="card">
+      <div class="inputs-line">
+        <div>
+          <label for="odds">American Odds</label>
+          <div class="odds-line">
+            <button type="button" class="btn" id="toggleBtn" aria-label="Switch odds sign" title="Switch odds sign">−</button>
+            <input id="odds" type="text" inputmode="numeric" placeholder="-110 or +145" aria-label="American odds">
           </div>
-          <div>
-            <label for="win">Amount to Win</label>
-            <input id="win" type="text" inputmode="numeric" placeholder="$25.00" aria-label="Amount to win in dollars">
-          </div>
+          <div class="error" id="oddsError">Odds must be ≤ -100 or ≥ +100</div>
         </div>
-
-        <div class="stake">
-          <small>Required Amount to Bet</small>
-          <div class="val" id="stake">$0.00</div>
+        <div>
+          <label for="win">Amount to Win</label>
+          <input id="win" type="text" inputmode="numeric" placeholder="$25.00" aria-label="Amount to win in dollars">
         </div>
       </div>
-    </div>
-  </main>
 
-  <footer>
-    © Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive<br>
-    <small id="version">Build v08-18-2025-7</small>
-  </footer>
+      <button type="button" class="btn btn-clear" id="clearBtn">Clear</button>
+
+      <div class="stake">
+        <small>Required Amount to Bet</small>
+        <div class="val" id="stake">$0.00</div>
+      </div>
+    </div>
+
+    <div class="foot">
+      © Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive<br>
+      <small style="color:#9aa4b2" id="version">Build v08-18-2025-8</small>
+    </div>
+  </div>
 
   <script>
-    // ----- Version tag -----
-    const VERSION = "v08-18-2025-7";
+    const VERSION = "v08-18-2025-8";
     (function(){ const v = document.getElementById("version"); if (v) v.textContent = "Build " + VERSION; })();
 
-    // ----- Helpers -----
     const $ = id => document.getElementById(id);
     const money = v => (isFinite(v) ? (Math.round(v*100)/100).toLocaleString(undefined,{style:'currency',currency:'USD'}) : "$0.00");
 
-    // Parse odds like "-110", "+145", "145"
     function parseOdds(raw){
       if(!raw) return null;
       raw = String(raw).trim();
@@ -123,118 +87,46 @@
       return parseFloat(cleaned);
     }
     function validOdds(n){ return (n <= -100 || n >= 100); }
+    function formatOddsField(odds){ const el=$("odds"); if(el&&odds!=null&&isFinite(odds)){ el.value=(odds>0? "+"+Math.abs(Math.trunc(odds)) : "-"+Math.abs(Math.trunc(odds))); }}
 
-    // Ensure explicit sign in the odds field
-    function formatOddsField(odds){
-      const el = $("odds"); if (!el) return;
-      if (odds == null || !isFinite(odds)) return;
-      const abs = Math.abs(Math.trunc(odds));
-      el.value = (odds > 0 ? "+" + abs : "-" + abs);
-    }
+    function getWinCents(){ const el=$("win"); return el?.dataset.cents?parseInt(el.dataset.cents,10):0; }
+    function setWinCents(c){ const el=$("win"); if(!el)return; c=Math.max(0,isFinite(c)?Math.trunc(c):0); el.dataset.cents=String(c); el.value=(c/100).toLocaleString(undefined,{style:'currency',currency:'USD'}); }
+    function handleWinInput(e){ const digits=(e.target.value.match(/\d/g)||[]).join(""); const c=digits===""?0:parseInt(digits,10); setWinCents(c); calculate(); }
+    function handleWinKeyDown(e){ if(["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"].includes(e.key))return; if(/^\d$/.test(e.key))return; e.preventDefault(); }
+    function pasteDigitsOnly(e){ e.preventDefault(); const t=(e.clipboardData||window.clipboardData||{getData:()=>""}).getData("text"); const d=(t.match(/\d/g)||[]).join(""); const c=d===""?getWinCents():parseInt(d,10); setWinCents(c); calculate(); }
 
-    // Currency mask (moving decimal) for win
-    function getWinCents(){
-      const el = $("win"); if (!el) return 0;
-      const raw = el.dataset.cents; return raw ? parseInt(raw,10) : 0;
-    }
-    function setWinCents(cents){
-      const el = $("win"); if (!el) return;
-      cents = Math.max(0, isFinite(cents) ? Math.trunc(cents) : 0);
-      el.dataset.cents = String(cents);
-      el.value = (cents/100).toLocaleString(undefined,{style:'currency',currency:'USD'});
-    }
-    function handleWinInput(e){
-      const digits = (e.target.value.match(/\d/g) || []).join("");
-      const cents = digits === "" ? 0 : parseInt(digits,10);
-      setWinCents(cents); calculate();
-    }
-    function handleWinKeyDown(e){
-      const allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];
-      if (allowed.includes(e.key)) return;
-      if (/^\d$/.test(e.key)) return;
-      e.preventDefault();
-    }
-    function pasteDigitsOnly(e){
-      e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData || {getData:()=>""}).getData("text");
-      const digits = (text.match(/\d/g) || []).join("");
-      const cents = digits === "" ? getWinCents() : parseInt(digits,10);
-      setWinCents(cents); calculate();
-    }
+    function calcStake(odds, win){ if(odds==null||!isFinite(odds)||!isFinite(win)||odds===0)return NaN; return odds>0?(win*100/odds):(win*Math.abs(odds)/100); }
 
-    // Core math
-    function calcStake(odds, win){
-      if(odds == null || !isFinite(odds) || !isFinite(win) || odds === 0) return NaN;
-      return odds > 0 ? (win*100/odds) : (win*Math.abs(odds)/100);
-    }
-
-    // UI update
-    function updateToggleLabel(odds){
-      const btn = $("toggleBtn"); if (!btn) return;
-      const showMinus = (odds != null && isFinite(odds) && odds > 0);
-      btn.textContent = showMinus ? "−" : "+";
-      btn.title = showMinus ? "Switch to negative odds" : "Switch to positive odds";
-      btn.setAttribute("aria-label", btn.title);
-    }
+    function updateToggleLabel(odds){ const btn=$("toggleBtn"); if(!btn)return; const showMinus=(odds!=null&&isFinite(odds)&&odds>0); btn.textContent=showMinus?"−":"+"; btn.title=showMinus?"Switch to negative odds":"Switch to positive odds"; btn.setAttribute("aria-label",btn.title); }
 
     function calculate(){
-      const oddsEl = $("odds");
-      const errorEl = $("oddsError");
-      const stakeEl = $("stake");
-
-      const odds = parseOdds((oddsEl?.value)||"");
-      const win  = getWinCents()/100;
-
-      if (odds == null || !isFinite(odds) || !validOdds(odds)) {
-        if (stakeEl) stakeEl.textContent = "$0.00";
-        if (errorEl) errorEl.style.display = "block";
-        if (oddsEl) oddsEl.classList.add("invalid");
-      } else {
-        const stake = calcStake(odds, win);
-        if (stakeEl) stakeEl.textContent = money(stake);
-        if (errorEl) errorEl.style.display = "none";
-        if (oddsEl) oddsEl.classList.remove("invalid");
-        formatOddsField(odds);
-      }
-
+      const oddsEl=$("odds"), errorEl=$("oddsError"), stakeEl=$("stake");
+      const odds=parseOdds(oddsEl?.value||""); const win=getWinCents()/100;
+      if(odds==null||!isFinite(odds)||!validOdds(odds)){ if(stakeEl)stakeEl.textContent="$0.00"; if(errorEl)errorEl.style.display="block"; if(oddsEl)oddsEl.classList.add("invalid"); }
+      else{ const stake=calcStake(odds,win); if(stakeEl)stakeEl.textContent=money(stake); if(errorEl)errorEl.style.display="none"; if(oddsEl)oddsEl.classList.remove("invalid"); formatOddsField(odds); }
       updateToggleLabel(odds);
     }
 
     function bind(){
-      const oddsEl = $("odds"), winEl = $("win"), btn = $("toggleBtn");
-      if (!oddsEl || !winEl || !btn) return false;
+      const oddsEl=$("odds"), winEl=$("win"), btn=$("toggleBtn"), clearBtn=$("clearBtn");
+      if(!oddsEl||!winEl||!btn||!clearBtn)return false;
 
-      btn.addEventListener("click", () => {
-        let n = parseOdds(oddsEl.value);
-        n = (n == null || !isFinite(n)) ? -110 : (n * -1);
-        oddsEl.value = String(n);
-        calculate();
+      btn.addEventListener("click",()=>{let n=parseOdds(oddsEl.value); n=(n==null||!isFinite(n))?-110:(n*-1); oddsEl.value=String(n); calculate();});
+      oddsEl.addEventListener("input",calculate);
+      oddsEl.addEventListener("blur",()=>{const n=parseOdds(oddsEl.value); if(n!=null&&isFinite(n)&&validOdds(n))formatOddsField(n);});
+      winEl.addEventListener("input",handleWinInput);
+      winEl.addEventListener("keydown",handleWinKeyDown);
+      winEl.addEventListener("paste",pasteDigitsOnly);
+
+      clearBtn.addEventListener("click",()=>{
+        oddsEl.value=""; winEl.value=""; winEl.dataset.cents="0";
+        $("stake").textContent="$0.00"; $("oddsError").style.display="none"; oddsEl.classList.remove("invalid");
       });
-
-      oddsEl.addEventListener("input", calculate);
-      oddsEl.addEventListener("blur", () => {
-        const n = parseOdds(oddsEl.value);
-        if (n != null && isFinite(n) && validOdds(n)) formatOddsField(n);
-      });
-
-      winEl.addEventListener("input", handleWinInput);
-      winEl.addEventListener("keydown", handleWinKeyDown);
-      winEl.addEventListener("paste", pasteDigitsOnly);
       return true;
     }
 
-    function init(){
-      if (!bind()) { setTimeout(init, 50); return; }
-      $("odds").value = "-110";
-      setWinCents(2500);
-      calculate();
-    }
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", init);
-    } else {
-      init();
-    }
+    function init(){ if(!bind()){setTimeout(init,50);return;} $("odds").value="-110"; setWinCents(2500); calculate(); }
+    if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init);} else{init();}
   </script>
 </body>
 </html>
