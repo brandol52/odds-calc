@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Odds Calc</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#0c111b">
+
+  <!-- iOS web app tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Odds Calc">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <style>
+    :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537;--accent:#22c55e}
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--fg)}
+    .wrap{max-width:520px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+    h1{font-size:18px;margin:10px 0 8px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
+    .row{display:grid;grid-template-columns:1fr;gap:10px}
+    label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+    .odds-line{display:grid;grid-template-columns:1fr 56px;gap:8px}
+    input[type="text"]{
+      width:100%;padding:12px 14px;border-radius:12px;background:#0a1020;color:var(--fg);
+      border:1px solid var(--border);outline:none;font-size:1.05rem
+    }
+    input:focus{border-color:#2dd4bf;box-shadow:0 0 0 .12rem rgba(45,212,191,.16)}
+    button{padding:12px;border-radius:12px;border:1px solid var(--border);background:#0d1930;color:var(--fg);font-size:1.1rem;cursor:pointer}
+    button:active{transform:translateY(1px)}
+    .tile{background:#0a1020;border:1px solid var(--border);border-radius:12px;padding:12px;margin-top:10px}
+    .tile small{display:block;color:var(--muted);font-size:.8rem;margin-bottom:4px}
+    .val-green{font-weight:800;letter-spacing:.2px;font-size:1.45rem;color:var(--accent)}
+    .sub{color:var(--muted);font-size:.85rem;margin:8px 2px 0}
+    .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:14px 0 8px}
+    @supports (padding: max(0px)) {
+      .wrap{padding-top: max(16px, env(safe-area-inset-top)); padding-bottom: max(16px, env(safe-area-inset-bottom));}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>American Odds — App Mode</h1>
+    <div class="card">
+      <div class="row">
+        <div>
+          <label for="odds">American Odds</label>
+          <div class="odds-line">
+            <input id="odds" type="text" inputmode="numeric" placeholder="-110 or 145" aria-label="American odds">
+            <button type="button" id="toggleBtn" aria-label="Switch odds sign" title="Switch odds sign">−</button>
+          </div>
+        </div>
+        <div>
+          <label for="win">Amount to Win</label>
+          <input id="win" type="text" inputmode="numeric" placeholder="$25.00" aria-label="Amount to win in dollars">
+        </div>
+      </div>
+      <div class="tile">
+        <small>Required Amount to Bet</small>
+        <div class="val-green" id="stake">$0.00</div>
+      </div>
+      <div class="sub">Add to Home Screen from Safari to launch full‑screen and work offline.</div>
+    </div>
+    <div class="foot">© Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive</div>
+  </div>
+
+  <script>
+    // PWA: register service worker
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js");
+      });
+    }
+
+    // Detect standalone
+    try {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if (isStandalone) document.title = "Odds Calc — App";
+    } catch {}
+
+    const $ = id => document.getElementById(id);
+    const money = v => (isFinite(v) ? (Math.round(v*100)/100).toLocaleString(undefined,{style:'currency',currency:'USD'}) : "$0.00");
+
+    function parseOdds(raw){
+      if(!raw) return null;
+      raw = String(raw).trim();
+      if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw);
+      const cleaned = raw.replace(/[^\d\-+]/g,"");
+      if(cleaned === "" || cleaned === "+" || cleaned === "-") return null;
+      return parseFloat(cleaned);
+    }
+
+    // Currency mask for win: store cents as integer; render as $X.XX
+    function getWinCents(){
+      const raw = $("win").dataset.cents;
+      return raw ? parseInt(raw,10) : 0;
+    }
+    function setWinCents(cents){
+      cents = Math.max(0, isFinite(cents) ? Math.trunc(cents) : 0);
+      $("win").dataset.cents = String(cents);
+      $("win").value = (cents/100).toLocaleString(undefined,{style:'currency',currency:'USD'});
+    }
+    function handleWinInput(e){
+      const digits = (e.target.value.match(/\d/g) || []).join("");
+      const cents = digits === "" ? 0 : parseInt(digits,10);
+      setWinCents(cents);
+      calculate();
+    }
+    function handleWinKeyDown(e){
+      const allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];
+      if (allowed.includes(e.key)) return;
+      if (/^\d$/.test(e.key)) return;
+      e.preventDefault();
+    }
+    function pasteDigitsOnly(e){
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData("text");
+      const digits = (text.match(/\d/g) || []).join("");
+      const cents = digits === "" ? getWinCents() : parseInt(digits,10);
+      setWinCents(cents);
+      calculate();
+    }
+
+    function calcStake(odds, win){
+      if(odds == null || !isFinite(odds) || !isFinite(win) || odds === 0) return NaN;
+      return odds > 0 ? (win*100/odds) : (win*Math.abs(odds)/100);
+    }
+
+    function updateToggleLabel(odds){
+      const btn = $("toggleBtn");
+      const showMinus = (odds != null && isFinite(odds) && odds > 0);
+      btn.textContent = showMinus ? "−" : "+";
+      btn.title = showMinus ? "Switch to negative odds" : "Switch to positive odds";
+      btn.setAttribute("aria-label", btn.title);
+    }
+
+    function calculate(){
+      const odds = parseOdds($("odds").value);
+      const win  = getWinCents() / 100;
+      const stake = calcStake(odds, win);
+      $("stake").textContent = money(stake);
+      updateToggleLabel(odds);
+    }
+
+    $("toggleBtn").addEventListener("click", () => {
+      const n = parseOdds($("odds").value);
+      if(n == null || !isFinite(n)){
+        $("odds").value = "-110";
+      } else {
+        $("odds").value = (n * -1).toString();
+      }
+      calculate();
+    });
+
+    $("odds").addEventListener("input", calculate);
+    $("win").addEventListener("input", handleWinInput);
+    $("win").addEventListener("keydown", handleWinKeyDown);
+    $("win").addEventListener("paste", pasteDigitsOnly);
+
+    // Defaults
+    $("odds").value = "-110";
+    setWinCents(2500);
+    calculate();
+  </script>
+</body>
+</html>
