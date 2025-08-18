@@ -35,12 +35,14 @@
     .stake{margin-top:10px;background:#0a1020;border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
     .stake small{display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px}
     .stake .val{font-weight:900;letter-spacing:.2px;font-size:2rem;color:var(--accent)}
+    .stake .be{margin-top:8px;color:var(--muted);font-size:.9rem}
     .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:14px 0 8px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <h1>American Odds — App Mode</h1>
+
     <div class="card">
       <div class="inputs-line">
         <div>
@@ -51,6 +53,7 @@
           </div>
           <div class="error" id="oddsError">Odds must be ≤ -100 or ≥ +100</div>
         </div>
+
         <div>
           <label for="win">Amount to Win</label>
           <input id="win" type="text" inputmode="numeric" placeholder="$25.00" aria-label="Amount to win in dollars">
@@ -62,22 +65,24 @@
       <div class="stake">
         <small>Required Amount to Bet</small>
         <div class="val" id="stake">$0.00</div>
+        <div class="be" id="breakeven">Break-even win rate: —</div>
       </div>
     </div>
 
     <div class="foot">
       © Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive<br>
-      <small style="color:#9aa4b2" id="version">Build v08-18-2025-8</small>
+      <small style="color:#9aa4b2" id="version">Build v08-18-2025-9</small>
     </div>
   </div>
 
   <script>
-    const VERSION = "v08-18-2025-8";
+    const VERSION = "v08-18-2025-9";
     (function(){ const v = document.getElementById("version"); if (v) v.textContent = "Build " + VERSION; })();
 
     const $ = id => document.getElementById(id);
     const money = v => (isFinite(v) ? (Math.round(v*100)/100).toLocaleString(undefined,{style:'currency',currency:'USD'}) : "$0.00");
 
+    // Parse odds like "-110", "+145", or "145"
     function parseOdds(raw){
       if(!raw) return null;
       raw = String(raw).trim();
@@ -87,46 +92,136 @@
       return parseFloat(cleaned);
     }
     function validOdds(n){ return (n <= -100 || n >= 100); }
-    function formatOddsField(odds){ const el=$("odds"); if(el&&odds!=null&&isFinite(odds)){ el.value=(odds>0? "+"+Math.abs(Math.trunc(odds)) : "-"+Math.abs(Math.trunc(odds))); }}
 
-    function getWinCents(){ const el=$("win"); return el?.dataset.cents?parseInt(el.dataset.cents,10):0; }
-    function setWinCents(c){ const el=$("win"); if(!el)return; c=Math.max(0,isFinite(c)?Math.trunc(c):0); el.dataset.cents=String(c); el.value=(c/100).toLocaleString(undefined,{style:'currency',currency:'USD'}); }
-    function handleWinInput(e){ const digits=(e.target.value.match(/\d/g)||[]).join(""); const c=digits===""?0:parseInt(digits,10); setWinCents(c); calculate(); }
-    function handleWinKeyDown(e){ if(["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"].includes(e.key))return; if(/^\d$/.test(e.key))return; e.preventDefault(); }
-    function pasteDigitsOnly(e){ e.preventDefault(); const t=(e.clipboardData||window.clipboardData||{getData:()=>""}).getData("text"); const d=(t.match(/\d/g)||[]).join(""); const c=d===""?getWinCents():parseInt(d,10); setWinCents(c); calculate(); }
+    // Ensure explicit sign in the odds field
+    function formatOddsField(odds){
+      const el = $("odds"); if (!el) return;
+      if (odds == null || !isFinite(odds)) return;
+      const abs = Math.abs(Math.trunc(odds));
+      el.value = (odds > 0 ? "+" + abs : "-" + abs);
+    }
 
-    function calcStake(odds, win){ if(odds==null||!isFinite(odds)||!isFinite(win)||odds===0)return NaN; return odds>0?(win*100/odds):(win*Math.abs(odds)/100); }
+    // Currency mask (moving decimal) for win
+    function getWinCents(){ const el = $("win"); return el?.dataset.cents ? parseInt(el.dataset.cents,10) : 0; }
+    function setWinCents(cents){
+      const el = $("win"); if (!el) return;
+      cents = Math.max(0, isFinite(cents) ? Math.trunc(cents) : 0);
+      el.dataset.cents = String(cents);
+      el.value = (cents/100).toLocaleString(undefined,{style:'currency',currency:'USD'});
+    }
+    function handleWinInput(e){
+      const digits = (e.target.value.match(/\d/g) || []).join("");
+      const cents = digits === "" ? 0 : parseInt(digits,10);
+      setWinCents(cents); calculate();
+    }
+    function handleWinKeyDown(e){
+      const allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];
+      if (allowed.includes(e.key)) return;
+      if (/^\d$/.test(e.key)) return;
+      e.preventDefault();
+    }
+    function pasteDigitsOnly(e){
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData || {getData:()=>""}).getData("text");
+      const digits = (text.match(/\d/g) || []).join("");
+      const cents = digits === "" ? getWinCents() : parseInt(digits,10);
+      setWinCents(cents); calculate();
+    }
 
-    function updateToggleLabel(odds){ const btn=$("toggleBtn"); if(!btn)return; const showMinus=(odds!=null&&isFinite(odds)&&odds>0); btn.textContent=showMinus?"−":"+"; btn.title=showMinus?"Switch to negative odds":"Switch to positive odds"; btn.setAttribute("aria-label",btn.title); }
+    // Core math
+    function calcStake(odds, win){
+      if(odds == null || !isFinite(odds) || !isFinite(win) || odds === 0) return NaN;
+      return odds > 0 ? (win*100/odds) : (win*Math.abs(odds)/100);
+    }
+
+    // Implied probability (break-even win rate)
+    function impliedProb(odds){
+      if (odds == null || !isFinite(odds) || !validOdds(odds)) return null;
+      if (odds > 0) return 100 / (odds + 100);
+      return Math.abs(odds) / (Math.abs(odds) + 100);
+    }
+
+    function updateToggleLabel(odds){
+      const btn = $("toggleBtn"); if (!btn) return;
+      const showMinus = (odds != null && isFinite(odds) && odds > 0);
+      btn.textContent = showMinus ? "−" : "+";
+      btn.title = showMinus ? "Switch to negative odds" : "Switch to positive odds";
+      btn.setAttribute("aria-label", btn.title);
+    }
 
     function calculate(){
-      const oddsEl=$("odds"), errorEl=$("oddsError"), stakeEl=$("stake");
-      const odds=parseOdds(oddsEl?.value||""); const win=getWinCents()/100;
-      if(odds==null||!isFinite(odds)||!validOdds(odds)){ if(stakeEl)stakeEl.textContent="$0.00"; if(errorEl)errorEl.style.display="block"; if(oddsEl)oddsEl.classList.add("invalid"); }
-      else{ const stake=calcStake(odds,win); if(stakeEl)stakeEl.textContent=money(stake); if(errorEl)errorEl.style.display="none"; if(oddsEl)oddsEl.classList.remove("invalid"); formatOddsField(odds); }
+      const oddsEl = $("odds"), errorEl = $("oddsError"), stakeEl = $("stake"), beEl = $("breakeven");
+      const odds = parseOdds(oddsEl?.value || "");
+      const win  = getWinCents() / 100;
+
+      if (odds == null || !isFinite(odds) || !validOdds(odds)) {
+        if (stakeEl) stakeEl.textContent = "$0.00";
+        if (errorEl) errorEl.style.display = "block";
+        if (beEl) beEl.textContent = "Break-even win rate: —";
+        if (oddsEl) oddsEl.classList.add("invalid");
+      } else {
+        const stake = calcStake(odds, win);
+        if (stakeEl) stakeEl.textContent = money(stake);
+        if (errorEl) errorEl.style.display = "none";
+        if (oddsEl) oddsEl.classList.remove("invalid");
+        formatOddsField(odds);
+
+        const p = impliedProb(odds);
+        if (beEl && p != null) {
+          const pct = (p*100).toFixed(2);
+          beEl.textContent = `Break-even win rate: ${pct}% — To break even at these odds, you must win at least ${pct}% of your bets.`;
+        }
+      }
+
       updateToggleLabel(odds);
     }
 
     function bind(){
-      const oddsEl=$("odds"), winEl=$("win"), btn=$("toggleBtn"), clearBtn=$("clearBtn");
-      if(!oddsEl||!winEl||!btn||!clearBtn)return false;
+      const oddsEl = $("odds"), winEl = $("win"), btn = $("toggleBtn"), clearBtn = $("clearBtn");
+      if (!oddsEl || !winEl || !btn || !clearBtn) return false;
 
-      btn.addEventListener("click",()=>{let n=parseOdds(oddsEl.value); n=(n==null||!isFinite(n))?-110:(n*-1); oddsEl.value=String(n); calculate();});
-      oddsEl.addEventListener("input",calculate);
-      oddsEl.addEventListener("blur",()=>{const n=parseOdds(oddsEl.value); if(n!=null&&isFinite(n)&&validOdds(n))formatOddsField(n);});
-      winEl.addEventListener("input",handleWinInput);
-      winEl.addEventListener("keydown",handleWinKeyDown);
-      winEl.addEventListener("paste",pasteDigitsOnly);
-
-      clearBtn.addEventListener("click",()=>{
-        oddsEl.value=""; winEl.value=""; winEl.dataset.cents="0";
-        $("stake").textContent="$0.00"; $("oddsError").style.display="none"; oddsEl.classList.remove("invalid");
+      btn.addEventListener("click", () => {
+        let n = parseOdds(oddsEl.value);
+        n = (n == null || !isFinite(n)) ? -110 : (n * -1);
+        oddsEl.value = String(n);
+        calculate();
       });
+
+      oddsEl.addEventListener("input", calculate);
+      oddsEl.addEventListener("blur", () => {
+        const n = parseOdds(oddsEl.value);
+        if (n != null && isFinite(n) && validOdds(n)) formatOddsField(n);
+      });
+
+      winEl.addEventListener("input", handleWinInput);
+      winEl.addEventListener("keydown", handleWinKeyDown);
+      winEl.addEventListener("paste", pasteDigitsOnly);
+
+      clearBtn.addEventListener("click", () => {
+        oddsEl.value = "";
+        winEl.value = "";
+        winEl.dataset.cents = "0";
+        $("stake").textContent = "$0.00";
+        $("oddsError").style.display = "none";
+        $("breakeven").textContent = "Break-even win rate: —";
+        oddsEl.classList.remove("invalid");
+      });
+
       return true;
     }
 
-    function init(){ if(!bind()){setTimeout(init,50);return;} $("odds").value="-110"; setWinCents(2500); calculate(); }
-    if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init);} else{init();}
+    function init(){
+      if (!bind()) { setTimeout(init, 50); return; }
+      $("odds").value = "-110";
+      setWinCents(2500);
+      calculate();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
   </script>
 </body>
 </html>
