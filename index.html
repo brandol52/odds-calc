@@ -35,8 +35,7 @@
     .stake{margin-top:10px;background:#0a1020;border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
     .stake small{display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px}
     .stake .val{font-weight:900;letter-spacing:.2px;font-size:2rem;color:var(--accent)}
-    .stake .be{margin-top:8px;color:var(--muted);font-size:.9rem;text-align:left}
-    .stake .be .be-pct{color:var(--accent);font-weight:700}
+    .stake .be{margin-top:8px;font-size:1.2rem;font-weight:700;color:var(--accent)}
     .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:14px 0 8px}
   </style>
 </head>
@@ -66,18 +65,18 @@
       <div class="stake">
         <small>Required Amount to Bet</small>
         <div class="val" id="stake">$0.00</div>
-        <div class="be" id="breakeven">Break-even win rate: —</div>
+        <div class="be" id="breakeven">—</div>
       </div>
     </div>
 
     <div class="foot">
       © Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive<br>
-      <small style="color:#9aa4b2" id="version">Build v08-18-2025-11</small>
+      <small style="color:#9aa4b2" id="version">Build v08-18-2025-12</small>
     </div>
   </div>
 
   <script>
-    const VERSION = "v08-18-2025-11";
+    const VERSION = "v08-18-2025-12";
     (function(){ const v = document.getElementById("version"); if (v) v.textContent = "Build " + VERSION; })();
 
     const $ = id => document.getElementById(id);
@@ -153,7 +152,7 @@
       if (odds == null || !isFinite(odds) || !validOdds(odds)) {
         if (stakeEl) stakeEl.textContent = "$0.00";
         if (errorEl) errorEl.style.display = "block";
-        if (beEl) beEl.textContent = "Break-even win rate: —";
+        if (beEl) beEl.textContent = "—";
         if (oddsEl) oddsEl.classList.add("invalid");
       } else {
         const stake = calcStake(odds, win);
@@ -164,8 +163,8 @@
 
         const p = impliedProb(odds);
         if (beEl && p != null) {
-          const pct = (p*100).toFixed(2);
-          beEl.innerHTML = `Break-even win rate: <span class="be-pct">${pct}%</span> — To break even at these odds, you must win at least <span class="be-pct">${pct}%</span> of your bets.`;
+          const pct = (p*100).toFixed(2) + "%";
+          beEl.textContent = pct;
         }
       }
 
@@ -199,7 +198,7 @@
         winEl.dataset.cents = "0";
         $("stake").textContent = "$0.00";
         $("oddsError").style.display = "none";
-        $("breakeven").textContent = "Break-even win rate: —";
+        $("breakeven").textContent = "—";
         oddsEl.classList.remove("invalid");
       });
 
