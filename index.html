@@ -35,7 +35,8 @@
     .stake{margin-top:10px;background:#0a1020;border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
     .stake small{display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px}
     .stake .val{font-weight:900;letter-spacing:.2px;font-size:2rem;color:var(--accent)}
-    .stake .be{margin-top:8px;color:var(--muted);font-size:.9rem}
+    .stake .be{margin-top:8px;color:var(--muted);font-size:.9rem;text-align:left}
+    .stake .be .be-pct{color:var(--accent);font-weight:700}
     .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:14px 0 8px}
   </style>
 </head>
@@ -71,18 +72,17 @@
 
     <div class="foot">
       © Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive<br>
-      <small style="color:#9aa4b2" id="version">Build v08-18-2025-9</small>
+      <small style="color:#9aa4b2" id="version">Build v08-18-2025-11</small>
     </div>
   </div>
 
   <script>
-    const VERSION = "v08-18-2025-9";
+    const VERSION = "v08-18-2025-11";
     (function(){ const v = document.getElementById("version"); if (v) v.textContent = "Build " + VERSION; })();
 
     const $ = id => document.getElementById(id);
     const money = v => (isFinite(v) ? (Math.round(v*100)/100).toLocaleString(undefined,{style:'currency',currency:'USD'}) : "$0.00");
 
-    // Parse odds like "-110", "+145", or "145"
     function parseOdds(raw){
       if(!raw) return null;
       raw = String(raw).trim();
@@ -93,7 +93,6 @@
     }
     function validOdds(n){ return (n <= -100 || n >= 100); }
 
-    // Ensure explicit sign in the odds field
     function formatOddsField(odds){
       const el = $("odds"); if (!el) return;
       if (odds == null || !isFinite(odds)) return;
@@ -101,7 +100,6 @@
       el.value = (odds > 0 ? "+" + abs : "-" + abs);
     }
 
-    // Currency mask (moving decimal) for win
     function getWinCents(){ const el = $("win"); return el?.dataset.cents ? parseInt(el.dataset.cents,10) : 0; }
     function setWinCents(cents){
       const el = $("win"); if (!el) return;
@@ -128,13 +126,11 @@
       setWinCents(cents); calculate();
     }
 
-    // Core math
     function calcStake(odds, win){
       if(odds == null || !isFinite(odds) || !isFinite(win) || odds === 0) return NaN;
       return odds > 0 ? (win*100/odds) : (win*Math.abs(odds)/100);
     }
 
-    // Implied probability (break-even win rate)
     function impliedProb(odds){
       if (odds == null || !isFinite(odds) || !validOdds(odds)) return null;
       if (odds > 0) return 100 / (odds + 100);
@@ -169,7 +165,7 @@
         const p = impliedProb(odds);
         if (beEl && p != null) {
           const pct = (p*100).toFixed(2);
-          beEl.textContent = `Break-even win rate: ${pct}% — To break even at these odds, you must win at least ${pct}% of your bets.`;
+          beEl.innerHTML = `Break-even win rate: <span class="be-pct">${pct}%</span> — To break even at these odds, you must win at least <span class="be-pct">${pct}%</span> of your bets.`;
         }
       }
 
