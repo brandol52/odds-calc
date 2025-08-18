@@ -59,7 +59,7 @@
           <label for="odds">American Odds</label>
           <div class="odds-line">
             <button type="button" class="btn" id="toggleBtn" aria-label="Switch odds sign" title="Switch odds sign">−</button>
-            <input id="odds" type="text" inputmode="numeric" placeholder="-110 or 145" aria-label="American odds">
+            <input id="odds" type="text" inputmode="numeric" placeholder="-110 or +145" aria-label="American odds">
           </div>
         </div>
         <div>
@@ -78,7 +78,7 @@
     </div>
     <div class="foot">
       © Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive<br>
-      <small style="color:#9aa4b2">Build v08-18-2025-2</small>
+      <small style="color:#9aa4b2">Build v08-18-2025-3</small>
     </div>
   </div>
 
@@ -115,19 +115,18 @@
       function parseOdds(raw){
         if(!raw) return null;
         raw = String(raw).trim();
-        if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw); // NOTE: This line is in a JS string! We'll replace with literal below.
-        // (we'll override this function after DOMContentLoaded to ensure literal regex; see below)
-        return parseFloat(raw);
+        if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw);
+        var cleaned = raw.replace(/[^\d\-+]/g,"");
+        if(cleaned === "" || cleaned === "+" || cleaned === "-") return null;
+        return parseFloat(cleaned);
       }
 
-      // We'll define the real parseOdds with correct regex literals after DOM is loaded to avoid any cross-escaping issues.
-      function realParseOdds(raw){
-        if(!raw) return null;
-        raw = String(raw).trim();
-        if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw);
-        const cleaned = raw.replace(/[^\d\-+]/g, "");
-        if (cleaned === "" || cleaned === "+" || cleaned === "-") return null;
-        return parseFloat(cleaned);
+      // Format odds in the field with explicit sign (+ for positive, - for negative)
+      function formatOddsField(odds){
+        var el = $("odds"); if (!el) return;
+        if (odds == null || !isFinite(odds)) return;
+        var abs = Math.abs(Math.trunc(odds));
+        el.value = (odds > 0 ? "+" + abs : "-" + abs);
       }
 
       // Currency mask (moving decimal) for win
@@ -174,11 +173,15 @@
       }
 
       function calculate(){
-        var po = window.__parseOdds || realParseOdds;
-        var odds = po(($("odds")||{}).value||"");
+        var oddsRaw = ($("odds")||{}).value||"";
+        var odds = parseOdds(oddsRaw);
         var win  = getWinCents() / 100;
         var stake = calcStake(odds, win);
         var stakeEl = $("stake"); if (stakeEl) stakeEl.textContent = money(stake);
+
+        // Ensure the odds field shows explicit + for positive
+        if (odds != null && isFinite(odds)) formatOddsField(odds);
+
         updateToggleLabel(odds);
       }
 
@@ -187,12 +190,19 @@
         if (!oddsEl || !winEl || !btn) return false;
 
         btn.addEventListener("click", function(){
-          var po = window.__parseOdds || realParseOdds;
-          var n = po(oddsEl.value);
-          oddsEl.value = (n == null || !isFinite(n)) ? "-110" : (n * -1).toString();
+          var n = parseOdds(oddsEl.value);
+          n = (n == null || !isFinite(n)) ? -110 : (n * -1);
+          oddsEl.value = String(n);
+          // calculate() will re-render with proper +/−
           calculate();
         });
+
         oddsEl.addEventListener("input", calculate);
+        oddsEl.addEventListener("blur", function(){
+          var n = parseOdds(oddsEl.value);
+          if (n != null && isFinite(n)) formatOddsField(n);
+        });
+
         winEl.addEventListener("input", handleWinInput);
         winEl.addEventListener("keydown", handleWinKeyDown);
         winEl.addEventListener("paste", pasteDigitsOnly);
@@ -200,23 +210,6 @@
       }
 
       function init(){
-        // Define the true regex-literal version to avoid any escaping issues
-        window.__parseOdds = function(raw){
-          if(!raw) return null;
-          raw = String(raw).trim();
-          if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw); // placeholder; replaced below
-          return parseFloat(raw);
-        };
-        // Replace with literal regexes
-        window.__parseOdds = function(raw){
-          if(!raw) return null;
-          raw = String(raw).trim();
-          if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw);
-          const cleaned = raw.replace(/[^\d\-+]/g, "");
-          if (cleaned === "" || cleaned === "+" || cleaned === "-") return null;
-          return parseFloat(cleaned);
-        };
-
         if (!bind()) { setTimeout(init, 50); return; }  // Retry binding if DOM not ready
         $("odds").value = "-110";
         setWinCents(2500);
