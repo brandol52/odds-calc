@@ -5,14 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Odds Calc</title>
 
-  <!-- (Optional) PWA hooks: include your manifest + SW in your repo -->
-  <meta name="theme-color" content="#0c111b">
-
   <style>
     :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537;--accent:#22c55e}
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--fg)}
-    .wrap{max-width:560px;margin:0 auto;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+    .wrap{max-width:560px;margin:0 auto;padding:16px}
     h1{font-size:18px;margin:10px 0 8px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
     .inputs-line{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
@@ -60,21 +57,25 @@
 
     <div class="foot">
       © Bryan Randol • stake = win × (|odds|/100) for negative, win × (100/odds) for positive<br>
-      <small style="color:#9aa4b2">Build v08-18-2025-5</small>
+      <small style="color:#9aa4b2" id="version">Build v08-18-2025-6</small>
     </div>
   </div>
 
   <script>
-    // Utilities
+    // ----- Version tag -----
+    const VERSION = "v08-18-2025-6";
+    (function(){ const v = document.getElementById("version"); if (v) v.textContent = "Build " + VERSION; })();
+
+    // ----- Helpers -----
     const $ = id => document.getElementById(id);
     const money = v => (isFinite(v) ? (Math.round(v*100)/100).toLocaleString(undefined,{style:'currency',currency:'USD'}) : "$0.00");
 
-    // Parse odds like "-110", "+145", "145", " - 110 "
+    // Parse odds like "-110", "+145", "145"
     function parseOdds(raw){
       if(!raw) return null;
       raw = String(raw).trim();
-      if(/^[+-]?\\d+$/.test(raw)) return parseFloat(raw);
-      const cleaned = raw.replace(/[^\\d\\-+]/g,"");
+      if(/^[+-]?\d+$/.test(raw)) return parseFloat(raw);
+      const cleaned = raw.replace(/[^\d\-+]/g,"");
       if(cleaned === "" || cleaned === "+" || cleaned === "-") return null;
       return parseFloat(cleaned);
     }
@@ -100,20 +101,20 @@
       el.value = (cents/100).toLocaleString(undefined,{style:'currency',currency:'USD'});
     }
     function handleWinInput(e){
-      const digits = (e.target.value.match(/\\d/g) || []).join("");
+      const digits = (e.target.value.match(/\d/g) || []).join("");
       const cents = digits === "" ? 0 : parseInt(digits,10);
       setWinCents(cents); calculate();
     }
     function handleWinKeyDown(e){
       const allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];
       if (allowed.includes(e.key)) return;
-      if (/^\\d$/.test(e.key)) return;
+      if (/^\d$/.test(e.key)) return;
       e.preventDefault();
     }
     function pasteDigitsOnly(e){
       e.preventDefault();
       const text = (e.clipboardData || window.clipboardData || {getData:()=>""}).getData("text");
-      const digits = (text.match(/\\d/g) || []).join("");
+      const digits = (text.match(/\d/g) || []).join("");
       const cents = digits === "" ? getWinCents() : parseInt(digits,10);
       setWinCents(cents); calculate();
     }
