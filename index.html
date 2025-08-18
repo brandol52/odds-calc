@@ -26,7 +26,6 @@
 
     /* two inputs on one line */
     .inputs-line{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
-    @media (max-width:520px){.inputs-line{grid-template-columns:1fr 1fr}}
     label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
 
     /* Odds line: toggle on the LEFT, then input */
@@ -81,102 +80,124 @@
   </div>
 
   <script>
-    // Auto-updating PWA registration (works with the service-worker.js I provided)
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', async () => {
-        try {
-          const reg = await navigator.serviceWorker.register('./service-worker.js');
-          reg.update(); setInterval(()=>reg.update(), 15*60*1000);
-          reg.addEventListener('updatefound', () => {
-            const nw = reg.installing; if (!nw) return;
-            nw.addEventListener('statechange', () => {
-              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                (reg.waiting || nw).postMessage('SKIP_WAITING');
-              }
-            });
-          });
-          navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
-        } catch (e) { /* ignore */ }
+    // --- PWA registration (safe) ---
+    (function(){
+      if (!('serviceWorker' in navigator)) return;
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('./service-worker.js')
+          .then(function(reg){
+            try {
+              reg.update();
+              setInterval(function(){ reg.update(); }, 15*60*1000);
+              reg.addEventListener('updatefound', function(){
+                var nw = reg.installing; if (!nw) return;
+                nw.addEventListener('statechange', function(){
+                  if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                    (reg.waiting || nw).postMessage('SKIP_WAITING');
+                  }
+                });
+              });
+              navigator.serviceWorker.addEventListener('controllerchange', function(){ location.reload(); });
+            } catch(e){}
+          })
+          .catch(function(){});
       });
-    }
+    })();
 
     // ---- Calculator logic ----
-    const $ = id => document.getElementById(id);
-    const money = v => (isFinite(v) ? (Math.round(v*100)/100).toLocaleString(undefined,{style:'currency',currency:'USD'}) : "$0.00");
+    (function(){
+      function $(id){ return document.getElementById(id); }
+      function money(v){ return (isFinite(v) ? (Math.round(v*100)/100).toLocaleString(undefined,{style:'currency',currency:'USD'}) : "$0.00"); }
 
-    function parseOdds(raw){
-      if(!raw) return null;
-      raw = String(raw).trim();
-      if(/^[+-]?\\d+$/.test(raw)) return parseFloat(raw);
-      const cleaned = raw.replace(/[^\\d\\-+]/g,"");
-      if(cleaned === "" || cleaned === "+" || cleaned === "-") return null;
-      return parseFloat(cleaned);
-    }
+      function parseOdds(raw){
+        if(!raw) return null;
+        raw = String(raw).trim();
+        if(/^[+-]?\\d+$/.test(raw)) return parseFloat(raw);
+        var cleaned = raw.replace(/[^\\d\\-+]/g,"");
+        if(cleaned === "" || cleaned === "+" || cleaned === "-") return null;
+        return parseFloat(cleaned);
+      }
 
-    // Currency mask (moving decimal) for win
-    function getWinCents(){ const raw = $("win").dataset.cents; return raw ? parseInt(raw,10) : 0; }
-    function setWinCents(cents){
-      cents = Math.max(0, isFinite(cents) ? Math.trunc(cents) : 0);
-      $("win").dataset.cents = String(cents);
-      $("win").value = (cents/100).toLocaleString(undefined,{style:'currency',currency:'USD'});
-    }
-    function handleWinInput(e){
-      const digits = (e.target.value.match(/\\d/g) || []).join("");
-      const cents = digits === "" ? 0 : parseInt(digits,10);
-      setWinCents(cents); calculate();
-    }
-    function handleWinKeyDown(e){
-      const allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];
-      if (allowed.includes(e.key)) return;
-      if (/^\\d$/.test(e.key)) return;
-      e.preventDefault();
-    }
-    function pasteDigitsOnly(e){
-      e.preventDefault();
-      const text = (e.clipboardData || window.clipboardData).getData("text");
-      const digits = (text.match(/\\d/g) || []).join("");
-      const cents = digits === "" ? getWinCents() : parseInt(digits,10);
-      setWinCents(cents); calculate();
-    }
+      // Currency mask (moving decimal) for win
+      function getWinCents(){
+        var el = $("win"); if (!el) return 0;
+        var raw = el.dataset.cents; return raw ? parseInt(raw,10) : 0;
+      }
+      function setWinCents(cents){
+        var el = $("win"); if (!el) return;
+        cents = Math.max(0, isFinite(cents) ? Math.trunc(cents) : 0);
+        el.dataset.cents = String(cents);
+        el.value = (cents/100).toLocaleString(undefined,{style:'currency',currency:'USD'});
+      }
+      function handleWinInput(e){
+        var digits = (e.target.value.match(/\\d/g) || []).join("");
+        var cents = digits === "" ? 0 : parseInt(digits,10);
+        setWinCents(cents); calculate();
+      }
+      function handleWinKeyDown(e){
+        var allowed = ["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];
+        if (allowed.indexOf(e.key) !== -1) return;
+        if (/^\\d$/.test(e.key)) return;
+        e.preventDefault();
+      }
+      function pasteDigitsOnly(e){
+        e.preventDefault();
+        var text = (e.clipboardData || window.clipboardData || {getData:function(){return "";}}).getData("text");
+        var digits = (text.match(/\\d/g) || []).join("");
+        var cents = digits === "" ? getWinCents() : parseInt(digits,10);
+        setWinCents(cents); calculate();
+      }
 
-    function calcStake(odds, win){
-      if(odds == null || !isFinite(odds) || !isFinite(win) || odds === 0) return NaN;
-      return odds > 0 ? (win*100/odds) : (win*Math.abs(odds)/100);
-    }
+      function calcStake(odds, win){
+        if(odds == null || !isFinite(odds) || !isFinite(win) || odds === 0) return NaN;
+        return odds > 0 ? (win*100/odds) : (win*Math.abs(odds)/100);
+      }
 
-    function updateToggleLabel(odds){
-      const btn = $("toggleBtn");
-      const showMinus = (odds != null && isFinite(odds) && odds > 0);
-      btn.textContent = showMinus ? "−" : "+";
-      btn.title = showMinus ? "Switch to negative odds" : "Switch to positive odds";
-      btn.setAttribute("aria-label", btn.title);
-    }
+      function updateToggleLabel(odds){
+        var btn = $("toggleBtn"); if (!btn) return;
+        var showMinus = (odds != null && isFinite(odds) && odds > 0);
+        btn.textContent = showMinus ? "−" : "+";
+        btn.title = showMinus ? "Switch to negative odds" : "Switch to positive odds";
+        btn.setAttribute("aria-label", btn.title);
+      }
 
-    function calculate(){
-      const odds = parseOdds($("odds").value);
-      const win  = getWinCents() / 100;
-      const stake = calcStake(odds, win);
-      $("stake").textContent = money(stake);
-      updateToggleLabel(odds);
-    }
+      function calculate(){
+        var odds = parseOdds(($("odds")||{}).value||"");
+        var win  = getWinCents() / 100;
+        var stake = calcStake(odds, win);
+        var stakeEl = $("stake"); if (stakeEl) stakeEl.textContent = money(stake);
+        updateToggleLabel(odds);
+      }
 
-    $("toggleBtn").addEventListener("click", () => {
-      const n = parseOdds($("odds").value);
-      $("odds").value = (n == null || !isFinite(n)) ? "-110" : (n * -1).toString();
-      calculate();
-    });
+      function bind(){
+        var oddsEl = $("odds"), winEl = $("win"), btn = $("toggleBtn");
+        if (!oddsEl || !winEl || !btn) return false;
 
-    // Bind after DOM ready as extra safety
-    document.addEventListener("DOMContentLoaded", () => {
-      $("odds").addEventListener("input", calculate);
-      $("win").addEventListener("input", handleWinInput);
-      $("win").addEventListener("keydown", handleWinKeyDown);
-      $("win").addEventListener("paste", pasteDigitsOnly);
-      // Defaults + first calc
-      $("odds").value = "-110";
-      setWinCents(2500);
-      calculate();
-    });
+        btn.addEventListener("click", function(){
+          var n = parseOdds(oddsEl.value);
+          oddsEl.value = (n == null || !isFinite(n)) ? "-110" : (n * -1).toString();
+          calculate();
+        });
+        oddsEl.addEventListener("input", calculate);
+        winEl.addEventListener("input", handleWinInput);
+        winEl.addEventListener("keydown", handleWinKeyDown);
+        winEl.addEventListener("paste", pasteDigitsOnly);
+        return true;
+      }
+
+      function init(){
+        if (!bind()) { setTimeout(init, 50); return; }  // Retry binding if DOM not ready yet
+        $("odds").value = "-110";
+        setWinCents(2500);
+        calculate();
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+      } else {
+        init();
+      }
+    })();
   </script>
 </body>
 </html>
