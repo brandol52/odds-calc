@@ -127,6 +127,7 @@
   </div>
 
   <script>
+    // ---------- Math helpers ----------
     const americanToProb = (o) => {
       if (!Number.isFinite(o) || o === 0) return NaN;
       return o > 0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100);
@@ -139,10 +140,12 @@
       if (!Number.isFinite(o) || !Number.isFinite(want) || o === 0) return NaN;
       return o > 0 ? (want*100)/o : (want*Math.abs(o))/100;
     };
+
+    // ---------- DOM utils ----------
     const $ = (id) => document.getElementById(id);
     const parseOdds = (el) => {
-      const t = (el.value || "").replace(/[^0-9+-]/g,"");
-      if (t === "" || t === "+" || t === "-" || t === "+-" || t === "-+") return NaN;
+      const t = (el.value || "").trim();
+      if (!/^[+-]?\\d+$/.test(t)) return NaN;
       const n = Number(t);
       if (!Number.isFinite(n) || n === 0) return NaN;
       return n;
@@ -156,56 +159,35 @@
       if (ok) el.classList.remove("invalid"); else el.classList.add("invalid");
     };
 
-    // ----- Currency input mask -----
+    // ----- Currency input mask (mobile-safe via 'input' events) -----
     function getCents(el){ const d = el.dataset.cents; return d? parseInt(d,10) : 0; }
     function setCents(el, cents){
       cents = Math.max(0, Math.trunc(cents||0));
       el.dataset.cents = String(cents);
       el.value = "$" + (cents/100).toFixed(2);
     }
-    function handleCurrencyKeyDown(e){
-      const allowedCtrl = ["Backspace","Delete","Tab","ArrowLeft","ArrowRight","Home","End"];
-      if (e.ctrlKey || e.metaKey) return;
-      if (allowedCtrl.includes(e.key)) {
-        if (e.key==="Backspace"){
-          const c = getCents(e.target);
-          setCents(e.target, Math.floor(c/10));
-          e.preventDefault(); e.target.dispatchEvent(new Event("change"));
-        } else if (e.key==="Delete"){
-          setCents(e.target,0);
-          e.preventDefault(); e.target.dispatchEvent(new Event("change"));
-        }
-        return;
-      }
-      if (/^\\d$/.test(e.key)){
-        const c = getCents(e.target);
-        const n = c*10 + parseInt(e.key,10);
-        setCents(e.target, n);
-        e.preventDefault(); e.target.dispatchEvent(new Event("change"));
-        return;
-      }
-      e.preventDefault();
+    function normalizeMoneyInput(el){
+      // Keep digits only; interpret as cents
+      const digits = (el.value||"").replace(/\\D/g, "");
+      const cents = digits === "" ? 0 : parseInt(digits,10);
+      setCents(el, cents);
     }
-    function handleCurrencyPaste(e){
-      e.preventDefault();
-      const text = (e.clipboardData.getData("text")||"").replace(/[^0-9.]/g,"");
-      if(!text){ return; }
-      let cents = 0;
-      if (text.includes(".")){
-        const num = Number(text);
-        if (Number.isFinite(num) && num>=0){ cents = Math.round(num*100); }
-      } else {
-        const num = Number(text);
-        if (Number.isFinite(num) && num>=0){ cents = Math.round(num*100); }
-      }
-      setCents(e.target, cents);
-      e.target.dispatchEvent(new Event("change"));
+    function attachMoneyMask(el, onChange){
+      setCents(el, getCents(el)); // init to $0.00 if empty
+      el.addEventListener("input", () => { normalizeMoneyInput(el); if (onChange) onChange(); });
+      el.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData.getData("text")||"").replace(/\\D/g,"");
+        const cents = text === "" ? 0 : parseInt(text,10);
+        setCents(el, cents); if (onChange) onChange();
+      });
     }
     const parseMoney = (el) => {
       const cents = getCents(el);
       return Number.isFinite(cents) ? cents/100 : NaN;
     };
 
+    // ---------- Calc 1: Stake -> Win with |odds| >= 100 validation ----------
     function calculate1() {
       const o = parseOdds($("odds"));
       const w = parseMoney($("win"));
@@ -213,6 +195,12 @@
       const winValid = Number.isFinite(w);
       setValidity($("odds"), oddsValid);
       setValidity($("win"), winValid);
+      const help = $("oddsHelp");
+      if (!oddsValid) {
+        if (help) help.textContent = "Use American odds with |odds| ≥ 100 (e.g., -110, +120).";
+      } else {
+        if (help) help.textContent = "Tap ± to flip sign if needed.";
+      }
       if (!oddsValid || !winValid) {
         $("stakeOut").textContent = "—";
         $("breakeven1").textContent = "—";
@@ -224,6 +212,7 @@
       $("breakeven1").textContent = fmtPct(p);
     }
 
+    // ---------- Calc 2: Juice / Overround ----------
     function calculateJuice() {
       const a = parseOdds($("sideA"));
       const b = parseOdds($("sideB"));
@@ -239,7 +228,7 @@
       const pA = americanToProb(a);
       const pB = americanToProb(b);
       const sum = pA + pB;
-      const juice = sum - 1;
+      const juice = sum - 1; // overround
       $("sumImpl").textContent = fmtPct(sum);
       $("juicePct").textContent = fmtPct(juice);
       if (sum > 0) {
@@ -255,14 +244,13 @@
       }
     }
 
+    // ---------- Wiring ----------
     function bind() {
       const debounce = (fn, ms=120) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms);} };
       $("odds").addEventListener("input", debounce(calculate1));
+
       const winEl = $("win");
-      setCents(winEl, getCents(winEl));
-      winEl.addEventListener("keydown", handleCurrencyKeyDown);
-      winEl.addEventListener("paste", handleCurrencyPaste);
-      winEl.addEventListener("change", calculate1);
+      attachMoneyMask(winEl, calculate1);
 
       $("toggleBtn").addEventListener("click", () => {
         const el=$("odds"); const v=parseOdds(el);
@@ -282,6 +270,7 @@
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
     else bind();
   </script>
+
   <script>
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
