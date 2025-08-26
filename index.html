@@ -114,10 +114,12 @@
   </div>
 
   <script>
+    // ---------- Math ----------
     const americanToProb = (o) => (!Number.isFinite(o) || o===0) ? NaN : (o>0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
     const probToAmerican = (p) => (!(p>0 && p<1)) ? NaN : (p>0.5 ? -Math.round(100*p/(1-p)) : Math.round(100*(1-p)/p));
     const stakeForWin = (o, want) => (!Number.isFinite(o)||!Number.isFinite(want)||o===0) ? NaN : (o>0 ? (want*100)/o : (want*Math.abs(o))/100);
 
+    // ---------- DOM + formatting ----------
     const $ = (id) => document.getElementById(id);
     const USD = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
     const fmtUSD = (n) => isNaN(n) ? "—" : USD.format(n);
@@ -125,52 +127,162 @@
     const fmtOdds = (o) => isNaN(o) ? "—" : (o>0?"+":"") + String(o);
     const setValidity = (el, ok) => { if(!el) return; el.classList.toggle("invalid", !ok); };
 
+    // ---------- Odds ----------
     function readOddsLoose(el){ const t=(el.value||"").trim(); if(!/^[+-]?\\d+$/.test(t)) return NaN; return Number(t); }
     function isValidOdds(n){ return Number.isFinite(n) && Math.abs(n) >= 100; }
 
-    function getCents(el){ const d=el.dataset.cents; return d? parseInt(d,10) : 0; }
-    function setCents(el,c){ c=Math.max(0,Math.trunc(c||0)); el.dataset.cents=String(c); el.value=USD.format(c/100); }
-    function attachMoneyMask(el,onChange){
-      const normalize=()=>{ const digits=(el.value||"").replace(/\\D/g,""); const cents=digits===""?0:parseInt(digits,10); setCents(el,cents); onChange&&onChange(); };
-      setCents(el,getCents(el));
-      el.addEventListener("input",normalize);
-      el.addEventListener("paste",(e)=>{ e.preventDefault(); const t=(e.clipboardData.getData("text")||"").replace(/\\D/g,""); setCents(el,t===""?0:parseInt(t,10)); onChange&&onChange(); });
+    // ---------- $ input mask with commas (digit buffer) ----------
+    function setFromDigits(el, digits){
+      // digits: string of 0-9 representing cents
+      if (!/^[0-9]*$/.test(digits)) digits = "";
+      // clamp length to something reasonable (e.g., 11 digits -> $99,999,999.99)
+      if (digits.length > 11) digits = digits.slice(0, 11);
+      el.dataset.digits = digits;
+      const cents = digits === "" ? 0 : parseInt(digits, 10);
+      el.value = USD.format(cents / 100);
     }
-    const parseMoney = (el)=>{ const cents=getCents(el); return Number.isFinite(cents)? cents/100 : NaN; };
+    function attachMoneyMask(el, onChange){
+      // Initialize
+      if (!el.dataset.digits) setFromDigits(el, "");
+      else setFromDigits(el, el.dataset.digits);
 
+      // Prefer beforeinput for reliable iOS behavior
+      const onBeforeInput = (e) => {
+        const type = e.inputType;
+        const data = e.data;
+        let digits = el.dataset.digits || "";
+        if (type === "insertText" && /\\d/.test(data)) {
+          digits += data;
+        } else if (type === "deleteContentBackward") {
+          digits = digits.slice(0, -1);
+        } else if (type === "insertFromPaste") {
+          const pasted = (e.clipboardData?.getData("text") || "").replace(/\\D/g,"");
+          digits += pasted;
+        } else {
+          // Fallback: rebuild from the control's current value
+          const raw = (el.value || "").replace(/\\D/g,"");
+          digits = raw;
+        }
+        e.preventDefault(); // we fully control the value
+        setFromDigits(el, digits);
+        onChange && onChange();
+      };
+
+      const onInputFallback = () => {
+        // For browsers without beforeinput support
+        const raw = (el.value || "").replace(/\\D/g,"");
+        setFromDigits(el, raw);
+        onChange && onChange();
+      };
+
+      el.addEventListener("beforeinput", onBeforeInput);
+      el.addEventListener("input", onInputFallback);
+      el.addEventListener("paste", (e) => {
+        // Some browsers fire paste without beforeinput
+        e.preventDefault();
+        const pasted = (e.clipboardData?.getData("text") || "").replace(/\\D/g,"");
+        const digits = (el.dataset.digits || "") + pasted;
+        setFromDigits(el, digits);
+        onChange && onChange();
+      });
+      el.addEventListener("focus", () => {
+        // Put caret at end
+        requestAnimationFrame(() => { try { el.setSelectionRange(el.value.length, el.value.length); } catch {} });
+      });
+    }
+    const parseMoney = (el) => {
+      const digits = el.dataset.digits || "";
+      if (digits === "") return 0;
+      const cents = parseInt(digits, 10);
+      return Number.isFinite(cents) ? cents / 100 : NaN;
+    };
+
+    // ---------- Calculations ----------
     function calculateStake(){
-      const o=readOddsLoose($("odds")), w=parseMoney($("win"));
-      const okOdds=isValidOdds(o), okWin=Number.isFinite(w);
-      setValidity($("odds"), okOdds); setValidity($("win"), okWin);
-      $("oddsHelp").textContent=okOdds?"Tap ± to flip sign if needed.":"Use American odds with |odds| ≥ 100 (e.g., -110, +120).";
-      if(!okOdds||!okWin){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
-      $("stakeOut").textContent=fmtUSD(stakeForWin(o,w));
-      $("breakeven1").textContent=fmtPct(americanToProb(o));
+      const o = readOddsLoose($("odds"));
+      const w = parseMoney($("win"));
+      const okOdds = isValidOdds(o);
+      const okWin = Number.isFinite(w);
+      setValidity($("odds"), okOdds);
+      setValidity($("win"), okWin);
+      $("oddsHelp").textContent = okOdds ? "Tap ± to flip sign if needed." : "Use American odds with |odds| ≥ 100 (e.g., -110, +120).";
+      if (!okOdds || !okWin){
+        $("stakeOut").textContent = "—";
+        $("breakeven1").textContent = "—";
+        return;
+      }
+      $("stakeOut").textContent = fmtUSD(stakeForWin(o, w));
+      $("breakeven1").textContent = fmtPct(americanToProb(o));
     }
 
     function calculateJuice(){
-      const a=readOddsLoose($("sideA")), b=readOddsLoose($("sideB"));
-      const aOk=isValidOdds(a), bOk=isValidOdds(b);
-      setValidity($("sideA"),aOk); setValidity($("sideB"),bOk);
-      if(!aOk||!bOk){ $("sumImpl").textContent="—"; $("juicePct").textContent="—"; $("nvProbs").textContent="—"; $("nvOdds").textContent="—"; return; }
-      const pA=americanToProb(a), pB=americanToProb(b), sum=pA+pB, juice=sum-1;
-      $("sumImpl").textContent=fmtPct(sum); $("juicePct").textContent=fmtPct(juice);
-      if(sum>0){ const nvA=pA/sum, nvB=pB/sum; $("nvProbs").textContent=fmtPct(nvA)+" / "+fmtPct(nvB); $("nvOdds").textContent=fmtOdds(probToAmerican(nvA))+" / "+fmtOdds(probToAmerican(nvB)); }
-      else{ $("nvProbs").textContent="—"; $("nvOdds").textContent="—"; }
+      const a = readOddsLoose($("sideA"));
+      const b = readOddsLoose($("sideB"));
+      const aOk = isValidOdds(a);
+      const bOk = isValidOdds(b);
+      setValidity($("sideA"), aOk);
+      setValidity($("sideB"), bOk);
+      if (!aOk || !bOk){
+        $("sumImpl").textContent="—";
+        $("juicePct").textContent="—";
+        $("nvProbs").textContent="—";
+        $("nvOdds").textContent="—";
+        return;
+      }
+      const pA = americanToProb(a), pB = americanToProb(b);
+      const sum = pA + pB, juice = sum - 1;
+      $("sumImpl").textContent = fmtPct(sum);
+      $("juicePct").textContent = fmtPct(juice);
+      if (sum>0){
+        const nvA=pA/sum, nvB=pB/sum;
+        $("nvProbs").textContent = fmtPct(nvA)+" / "+fmtPct(nvB);
+        $("nvOdds").textContent = fmtOdds(probToAmerican(nvA))+" / "+fmtOdds(probToAmerican(nvB));
+      } else {
+        $("nvProbs").textContent="—";
+        $("nvOdds").textContent="—";
+      }
     }
 
+    // ---------- Wiring ----------
     function bind(){
-      attachMoneyMask($("win"),calculateStake);
-      $("odds").addEventListener("input",()=>{ calculateStake(); $("sideA").value=$("odds").value; calculateJuice(); });
-      $("toggleBtn").addEventListener("click",()=>{ const v=$("odds").value.trim(); if(!v) return; $("odds").value=v.startsWith("-")? v.slice(1):(v.startsWith("+")? "-"+v.slice(1): "-"+v); $("odds").dispatchEvent(new Event("input",{bubbles:true})); });
-      let deb; const debounce=(fn,ms=120)=>{clearTimeout(deb);deb=setTimeout(fn,ms);};
-      $("sideA").addEventListener("input",()=>debounce(calculateJuice));
-      $("sideB").addEventListener("input",()=>debounce(calculateJuice));
-      $("flipA").addEventListener("click",()=>{ const v=$("sideA").value.trim(); if(!v) return; $("sideA").value=v.startsWith("-")? v.slice(1):(v.startsWith("+")? "-"+v.slice(1): "-"+v); $("sideA").dispatchEvent(new Event("input",{bubbles:true})); });
-      $("flipB").addEventListener("click",()=>{ const v=$("sideB").value.trim(); if(!v) return; $("sideB").value=v.startsWith("-")? v.slice(1):(v.startsWith("+")? "-"+v.slice(1): "-"+v); $("sideB").dispatchEvent(new Event("input",{bubbles:true})); });
-      setCents($("win"),0); calculateStake(); $("sideA").value=$("odds").value; calculateJuice();
+      // Money mask
+      attachMoneyMask($("win"), calculateStake);
+
+      // Odds input (validate, but don't block) + hard sync to Side A
+      $("odds").addEventListener("input", ()=>{
+        calculateStake();
+        $("sideA").value = $("odds").value;
+        calculateJuice();
+      });
+
+      // Toggle sign for stake odds (also syncs Side A)
+      $("toggleBtn").addEventListener("click", ()=>{
+        const v = $("odds").value.trim();
+        if (!v) return;
+        $("odds").value = v.startsWith("-") ? v.slice(1) : (v.startsWith("+") ? "-"+v.slice(1) : "-"+v);
+        $("odds").dispatchEvent(new Event("input",{bubbles:true}));
+      });
+
+      // Juice inputs + flips
+      let deb; const debounce=(fn,ms=120)=>{clearTimeout(deb); deb=setTimeout(fn,ms);};
+      $("sideA").addEventListener("input", ()=>debounce(calculateJuice));
+      $("sideB").addEventListener("input", ()=>debounce(calculateJuice));
+      $("flipA").addEventListener("click", ()=>{ const v=$("sideA").value.trim(); if(!v) return; $("sideA").value = v.startsWith("-")? v.slice(1) : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); $("sideA").dispatchEvent(new Event("input",{bubbles:true})); });
+      $("flipB").addEventListener("click", ()=>{ const v=$("sideB").value.trim(); if(!v) return; $("sideB").value = v.startsWith("-")? v.slice(1) : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); $("sideB").dispatchEvent(new Event("input",{bubbles:true})); });
+
+      // Initialize
+      setFromDigits($("win"), "");          // show $0.00
+      calculateStake();
+      $("sideA").value = $("odds").value;   // initial autofill
+      calculateJuice();
     }
-    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bind); else bind();
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind); else bind();
+  </script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+    }
   </script>
 </body>
 </html>
