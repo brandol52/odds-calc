@@ -1,3 +1,3 @@
 # Odds Calc
 
-A PWA odds calculator.
+Mobile-friendly stake/win and juice calculator. See manifest.json for PWA details.
