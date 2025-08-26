@@ -6,10 +6,7 @@
   <title>Odds Calc</title>
   <meta name="theme-color" content="#0c111b">
   <style>
-    :root{
-      --bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;
-      --card:#0f172a;--border:#1f2537;--accent:#22c55e;--bad:#ef4444
-    }
+    :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537;--accent:#22c55e;--bad:#ef4444}
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:var(--bg);color:var(--fg);min-height:100dvh;display:flex;flex-direction:column;
@@ -29,13 +26,13 @@
     .invalid{border-color:var(--bad)}
     .result-line{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border-radius:10px;border:1px solid var(--border);font-variant-numeric:tabular-nums}
     .small{font-size:12px}
-    @media (max-width: 430px) {
+    @media (max-width: 430px){
       h1{font-size:16px}
       .card{padding:12px;border-radius:12px}
       .result-line{padding:6px 8px}
       input[type="text"]{padding:9px 10px;font-size:15px}
       .small{font-size:11px}
-      .muted{opacity:0.95}
+      .muted{opacity:.95}
       .wrap{row-gap:8px}
     }
     html, body {overscroll-behavior: contain}
@@ -55,8 +52,8 @@
       <div class="row">
         <div class="col">
           <label for="odds">American Odds</label>
-          <input id="odds" type="text" inputmode="numeric" pattern="-?\\d*" placeholder="+150 or -120" aria-describedby="oddsHelp">
-          <div id="oddsHelp" class="small muted">Tap ± to flip sign if needed.</div>
+          <input id="odds" type="text" inputmode="numeric" placeholder="+150 or -120" aria-describedby="oddsHelp">
+          <div id="oddsHelp" class="small muted">Use American odds with |odds| ≥ 100 (e.g., -110, +120).</div>
         </div>
         <div>
           <label for="toggleBtn" class="muted small">&nbsp;</label>
@@ -82,26 +79,33 @@
     <!-- Calculator 2: Juice Calculator -->
     <section class="card" aria-labelledby="juiceCalc">
       <h2 id="juiceCalc" class="muted" style="font-size:14px;margin:0">Juice / Overround</h2>
+
+      <!-- Side A auto-prefilled from main odds -->
       <div class="row">
         <div class="col">
           <label for="sideA">Side A Odds</label>
-          <input id="sideA" type="text" inputmode="numeric" pattern="-?\\d*" placeholder="-110">
+          <input id="sideA" type="text" inputmode="numeric" placeholder="Auto from above">
+          <div class="small muted">Auto-filled from the Stake → Win odds.</div>
         </div>
         <div>
           <label for="flipA" class="muted small">&nbsp;</label>
           <button id="flipA" class="toggle" type="button">±</button>
         </div>
       </div>
+
+      <!-- Ask user for Side B -->
       <div class="row">
         <div class="col">
           <label for="sideB">Side B Odds</label>
-          <input id="sideB" type="text" inputmode="numeric" pattern="-?\\d*" placeholder="-110">
+          <input id="sideB" type="text" inputmode="numeric" placeholder="Enter the other side (e.g., -110)">
+          <div class="small muted">Enter Side B to compute total implied, juice, and no-vig lines.</div>
         </div>
         <div>
           <label for="flipB" class="muted small">&nbsp;</label>
           <button id="flipB" class="toggle" type="button">±</button>
         </div>
       </div>
+
       <div class="result-line" aria-live="polite" aria-atomic="true">
         <div>Total Implied (A+B)</div>
         <div class="val" id="sumImpl">—</div>
@@ -118,7 +122,7 @@
         <div>No-Vig Odds A / B</div>
         <div class="val" id="nvOdds">—</div>
       </div>
-      <div class="small muted">Enter both sides of a 2-way market (spread or total). Overround = (ImpA + ImpB − 1).</div>
+      <div class="small muted">Overround = (ImpA + ImpB − 1). Normalization splits vig across both sides.</div>
     </section>
 
     <footer class="small muted" style="text-align:center;padding:6px 0 12px">
@@ -127,148 +131,127 @@
   </div>
 
   <script>
-    // ---------- Math helpers ----------
-    const americanToProb = (o) => {
-      if (!Number.isFinite(o) || o === 0) return NaN;
-      return o > 0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100);
-    };
-    const probToAmerican = (p) => {
-      if (!(p > 0 && p < 1)) return NaN;
-      return p > 0.5 ? -Math.round(100*p/(1-p)) : Math.round(100*(1-p)/p);
-    };
-    const stakeForWin = (o, want) => {
-      if (!Number.isFinite(o) || !Number.isFinite(want) || o === 0) return NaN;
-      return o > 0 ? (want*100)/o : (want*Math.abs(o))/100;
-    };
+    // ---------- Math ----------
+    const americanToProb = (o) => (!Number.isFinite(o) || o===0) ? NaN : (o>0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
+    const probToAmerican = (p) => (!(p>0 && p<1)) ? NaN : (p>0.5 ? -Math.round(100*p/(1-p)) : Math.round(100*(1-p)/p));
+    const stakeForWin = (o, want) => (!Number.isFinite(o)||!Number.isFinite(want)||o===0) ? NaN : (o>0 ? (want*100)/o : (want*Math.abs(o))/100);
 
-    // ---------- DOM utils ----------
+    // ---------- DOM ----------
     const $ = (id) => document.getElementById(id);
-    const parseOdds = (el) => {
-      const t = (el.value || "").trim();
-      if (!/^[+-]?\\d+$/.test(t)) return NaN;
-      const n = Number(t);
-      if (!Number.isFinite(n) || n === 0) return NaN;
-      return n;
-    };
     const fmtUSD = (n) => isNaN(n) ? "—" : "$" + n.toFixed(2);
     const fmtPct = (p) => isNaN(p) ? "—" : (p*100).toFixed(2) + "%";
     const fmtOdds = (o) => isNaN(o) ? "—" : (o>0?"+":"") + String(o);
+    const setValidity = (el, ok) => { if(!el) return; el.classList.toggle("invalid", !ok); };
 
-    const setValidity = (el, ok) => {
-      if (!el) return;
-      if (ok) el.classList.remove("invalid"); else el.classList.add("invalid");
+    // Odds sanitization
+    function sanitizeOddsString(str){ const m=(str||"").match(/^[\+\-]?\d+$/); return m? m[0] : ""; }
+    function attachOddsGuard(el, onChange){
+      el.dataset.prev="";
+      const apply=()=>{
+        const raw = sanitizeOddsString(el.value.trim());
+        if (raw===""){ setValidity(el,false); onChange&&onChange(); return; }
+        const n = Number(raw);
+        const ok = Number.isFinite(n) && Math.abs(n) >= 100;
+        if (ok){ el.dataset.prev = raw; el.value = raw; }
+        else if (el.dataset.prev!==""){ el.value = el.dataset.prev; }
+        setValidity(el, ok); onChange&&onChange();
+      };
+      el.addEventListener("input", apply);
+      apply();
+    }
+    const readOdds = (el) => {
+      const s = sanitizeOddsString(el.value.trim());
+      const n = Number(s);
+      return (Number.isFinite(n) && Math.abs(n) >= 100) ? n : NaN;
     };
 
-    // ----- Currency input mask (mobile-safe via 'input' events) -----
-    function getCents(el){ const d = el.dataset.cents; return d? parseInt(d,10) : 0; }
-    function setCents(el, cents){
-      cents = Math.max(0, Math.trunc(cents||0));
-      el.dataset.cents = String(cents);
-      el.value = "$" + (cents/100).toFixed(2);
-    }
-    function normalizeMoneyInput(el){
-      // Keep digits only; interpret as cents
-      const digits = (el.value||"").replace(/\\D/g, "");
-      const cents = digits === "" ? 0 : parseInt(digits,10);
-      setCents(el, cents);
-    }
+    // $ mask (digits -> cents)
+    function getCents(el){ const d=el.dataset.cents; return d? parseInt(d,10) : 0; }
+    function setCents(el,c){ c=Math.max(0,Math.trunc(c||0)); el.dataset.cents=String(c); el.value="$"+(c/100).toFixed(2); }
     function attachMoneyMask(el, onChange){
-      setCents(el, getCents(el)); // init to $0.00 if empty
-      el.addEventListener("input", () => { normalizeMoneyInput(el); if (onChange) onChange(); });
-      el.addEventListener("paste", (e) => {
-        e.preventDefault();
-        const text = (e.clipboardData.getData("text")||"").replace(/\\D/g,"");
-        const cents = text === "" ? 0 : parseInt(text,10);
-        setCents(el, cents); if (onChange) onChange();
-      });
+      const normalize=()=>{
+        const digits=(el.value||"").replace(/\D/g,"");
+        const cents=digits===""?0:parseInt(digits,10);
+        setCents(el,cents); onChange&&onChange();
+      };
+      if(!el.dataset.cents) setCents(el,0); else setCents(el,getCents(el));
+      el.addEventListener("input", normalize);
+      el.addEventListener("paste",(e)=>{e.preventDefault(); const t=(e.clipboardData.getData("text")||"").replace(/\D/g,""); setCents(el,t===""?0:parseInt(t,10)); onChange&&onChange();});
+      el.addEventListener("focus",()=>{requestAnimationFrame(()=>{try{el.setSelectionRange(el.value.length,el.value.length);}catch{}});});
     }
-    const parseMoney = (el) => {
-      const cents = getCents(el);
-      return Number.isFinite(cents) ? cents/100 : NaN;
-    };
+    const parseMoney = (el)=>{ const cents=getCents(el); return Number.isFinite(cents)? cents/100 : NaN; };
 
-    // ---------- Calc 1: Stake -> Win with |odds| >= 100 validation ----------
-    function calculate1() {
-      const o = parseOdds($("odds"));
+    // ---------- Calcs ----------
+    function calculate1(){
+      const o = readOdds($("odds"));
       const w = parseMoney($("win"));
-      const oddsValid = Number.isFinite(o) && Math.abs(o) >= 100;
+      const oddsValid = Number.isFinite(o);
       const winValid = Number.isFinite(w);
       setValidity($("odds"), oddsValid);
       setValidity($("win"), winValid);
-      const help = $("oddsHelp");
-      if (!oddsValid) {
-        if (help) help.textContent = "Use American odds with |odds| ≥ 100 (e.g., -110, +120).";
-      } else {
-        if (help) help.textContent = "Tap ± to flip sign if needed.";
-      }
-      if (!oddsValid || !winValid) {
-        $("stakeOut").textContent = "—";
-        $("breakeven1").textContent = "—";
-        return;
-      }
-      const stake = stakeForWin(o, w);
-      const p = americanToProb(o);
-      $("stakeOut").textContent = fmtUSD(stake);
-      $("breakeven1").textContent = fmtPct(p);
+      $("oddsHelp").textContent = oddsValid ? "Tap ± to flip sign if needed." : "Use American odds with |odds| ≥ 100 (e.g., -110, +120).";
+      if(!oddsValid || !winValid){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
+      $("stakeOut").textContent = fmtUSD(stakeForWin(o, w));
+      $("breakeven1").textContent = fmtPct(americanToProb(o));
     }
 
-    // ---------- Calc 2: Juice / Overround ----------
-    function calculateJuice() {
-      const a = parseOdds($("sideA"));
-      const b = parseOdds($("sideB"));
-      setValidity($("sideA"), Number.isFinite(a));
-      setValidity($("sideB"), Number.isFinite(b));
-      if (!Number.isFinite(a) || !Number.isFinite(b)) {
-        $("sumImpl").textContent = "—";
-        $("juicePct").textContent = "—";
-        $("nvProbs").textContent = "—";
-        $("nvOdds").textContent = "—";
-        return;
-      }
-      const pA = americanToProb(a);
-      const pB = americanToProb(b);
-      const sum = pA + pB;
-      const juice = sum - 1; // overround
+    function calculateJuice(){
+      const aStr = sanitizeOddsString($("sideA").value.trim());
+      const bStr = sanitizeOddsString($("sideB").value.trim());
+      const a = Number(aStr), b = Number(bStr);
+      const aOk = Number.isFinite(a) && a!==0;
+      const bOk = Number.isFinite(b) && b!==0;
+      setValidity($("sideA"), aOk); setValidity($("sideB"), bOk);
+      if(!aOk || !bOk){ $("sumImpl").textContent="—"; $("juicePct").textContent="—"; $("nvProbs").textContent="—"; $("nvOdds").textContent="—"; return; }
+      const pA = americanToProb(a), pB = americanToProb(b);
+      const sum = pA + pB, juice = sum - 1;
       $("sumImpl").textContent = fmtPct(sum);
       $("juicePct").textContent = fmtPct(juice);
-      if (sum > 0) {
-        const nvA = pA / sum;
-        const nvB = pB / sum;
-        $("nvProbs").textContent = fmtPct(nvA) + " / " + fmtPct(nvB);
-        const nvAOdds = probToAmerican(nvA);
-        const nvBOdds = probToAmerican(nvB);
-        $("nvOdds").textContent = fmtOdds(nvAOdds) + " / " + fmtOdds(nvBOdds);
-      } else {
-        $("nvProbs").textContent = "—";
-        $("nvOdds").textContent = "—";
-      }
+      if(sum>0){
+        const nvA=pA/sum, nvB=pB/sum;
+        $("nvProbs").textContent = fmtPct(nvA)+" / "+fmtPct(nvB);
+        $("nvOdds").textContent = fmtOdds(probToAmerican(nvA))+" / "+fmtOdds(probToAmerican(nvB));
+      }else{ $("nvProbs").textContent="—"; $("nvOdds").textContent="—"; }
     }
 
     // ---------- Wiring ----------
-    function bind() {
-      const debounce = (fn, ms=120) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms);} };
-      $("odds").addEventListener("input", debounce(calculate1));
+    function bind(){
+      attachOddsGuard($("odds"), calculate1);
+      attachMoneyMask($("win"), calculate1);
 
-      const winEl = $("win");
-      attachMoneyMask(winEl, calculate1);
+      // Sync Side A from main odds until user edits Side A
+      let userEditedSideA = false;
+      $("sideA").addEventListener("input", ()=>{ userEditedSideA = true; });
+      const syncSideA = ()=>{
+        if (userEditedSideA) return;
+        $("sideA").value = $("odds").value;
+        $("sideA").dispatchEvent(new Event("input",{bubbles:true}));
+      };
+      $("odds").addEventListener("input", syncSideA);
+      // initial sync
+      syncSideA();
 
-      $("toggleBtn").addEventListener("click", () => {
-        const el=$("odds"); const v=parseOdds(el);
-        if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v));
-        calculate1();
+      $("toggleBtn").addEventListener("click", ()=>{
+        const el=$("odds"); const s=sanitizeOddsString(el.value.trim());
+        if(!s) return;
+        const flipped = (s[0]==='-') ? s.slice(1) : (s[0]==='+' ? '-'+s.slice(1) : '-'+s);
+        el.value = flipped;
+        el.dispatchEvent(new Event("input",{bubbles:true}));
       });
 
-      const jcalc = debounce(calculateJuice);
-      $("sideA").addEventListener("input", jcalc);
-      $("sideB").addEventListener("input", jcalc);
-      $("flipA").addEventListener("click", () => { const el=$("sideA"); const v=parseOdds(el); if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v)); calculateJuice(); });
-      $("flipB").addEventListener("click", () => { const el=$("sideB"); const v=parseOdds(el); if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v)); calculateJuice(); });
+      const deb=(fn,ms=120)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);}};
+      $("sideA").addEventListener("input", deb(calculateJuice));
+      $("sideB").addEventListener("input", deb(calculateJuice));
+      $("flipA").addEventListener("click", ()=>{ const el=$("sideA"); const v=el.value.trim(); el.value = v.startsWith("-")? v.replace(/^-/,"") : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); el.dispatchEvent(new Event("input",{bubbles:true})); });
+      $("flipB").addEventListener("click", ()=>{ const el=$("sideB"); const v=el.value.trim(); el.value = v.startsWith("-")? v.replace(/^-/,"") : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); el.dispatchEvent(new Event("input",{bubbles:true})); });
 
       calculate1();
       calculateJuice();
+
+      // Focus Side B prompt if Side A was auto-set
+      setTimeout(()=>{ try{ $("sideB").focus(); }catch{} }, 0);
     }
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
-    else bind();
+    if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", bind); else bind();
   </script>
 
   <script>
