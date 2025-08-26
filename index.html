@@ -80,12 +80,11 @@
     <section class="card" aria-labelledby="juiceCalc">
       <h2 id="juiceCalc" class="muted" style="font-size:14px;margin:0">Juice / Overround</h2>
 
-      <!-- Side A auto-prefilled from main odds -->
       <div class="row">
         <div class="col">
           <label for="sideA">Side A Odds</label>
-          <input id="sideA" type="text" inputmode="numeric" placeholder="Auto from above">
-          <div class="small muted">Auto-filled from the Stake → Win odds.</div>
+          <input id="sideA" type="text" inputmode="numeric" placeholder="-110">
+          <div class="small muted">Auto-filled from the Stake → Win odds until you edit Side A.</div>
         </div>
         <div>
           <label for="flipA" class="muted small">&nbsp;</label>
@@ -93,12 +92,10 @@
         </div>
       </div>
 
-      <!-- Ask user for Side B -->
       <div class="row">
         <div class="col">
           <label for="sideB">Side B Odds</label>
           <input id="sideB" type="text" inputmode="numeric" placeholder="Enter the other side (e.g., -110)">
-          <div class="small muted">Enter Side B to compute total implied, juice, and no-vig lines.</div>
         </div>
         <div>
           <label for="flipB" class="muted small">&nbsp;</label>
@@ -122,7 +119,7 @@
         <div>No-Vig Odds A / B</div>
         <div class="val" id="nvOdds">—</div>
       </div>
-      <div class="small muted">Overround = (ImpA + ImpB − 1). Normalization splits vig across both sides.</div>
+      <div class="small muted">Overround = (ImpA + ImpB − 1). No-vig splits that across both sides.</div>
     </section>
 
     <footer class="small muted" style="text-align:center;padding:6px 0 12px">
@@ -131,124 +128,130 @@
   </div>
 
   <script>
-    // ---------- Math ----------
+    // ---------- Math helpers ----------
     const americanToProb = (o) => (!Number.isFinite(o) || o===0) ? NaN : (o>0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
     const probToAmerican = (p) => (!(p>0 && p<1)) ? NaN : (p>0.5 ? -Math.round(100*p/(1-p)) : Math.round(100*(1-p)/p));
     const stakeForWin = (o, want) => (!Number.isFinite(o)||!Number.isFinite(want)||o===0) ? NaN : (o>0 ? (want*100)/o : (want*Math.abs(o))/100);
 
-    // ---------- DOM ----------
+    // ---------- DOM utils ----------
     const $ = (id) => document.getElementById(id);
     const fmtUSD = (n) => isNaN(n) ? "—" : "$" + n.toFixed(2);
     const fmtPct = (p) => isNaN(p) ? "—" : (p*100).toFixed(2) + "%";
     const fmtOdds = (o) => isNaN(o) ? "—" : (o>0?"+":"") + String(o);
     const setValidity = (el, ok) => { if(!el) return; el.classList.toggle("invalid", !ok); };
 
-    // Odds sanitization
-    function sanitizeOddsString(str){ const m=(str||"").match(/^[\+\-]?\d+$/); return m? m[0] : ""; }
-    function attachOddsGuard(el, onChange){
-      el.dataset.prev="";
-      const apply=()=>{
-        const raw = sanitizeOddsString(el.value.trim());
-        if (raw===""){ setValidity(el,false); onChange&&onChange(); return; }
-        const n = Number(raw);
-        const ok = Number.isFinite(n) && Math.abs(n) >= 100;
-        if (ok){ el.dataset.prev = raw; el.value = raw; }
-        else if (el.dataset.prev!==""){ el.value = el.dataset.prev; }
-        setValidity(el, ok); onChange&&onChange();
-      };
-      el.addEventListener("input", apply);
-      apply();
+    // ---------- Odds parsing / validation (no blocking—just mark invalid) ----------
+    function readOddsLoose(el){
+      const t = (el.value||"").trim();
+      if (!/^[+-]?\d+$/.test(t)) return NaN; // allow full delete/backspace while editing
+      const n = Number(t);
+      return Number.isFinite(n) ? n : NaN;
     }
-    const readOdds = (el) => {
-      const s = sanitizeOddsString(el.value.trim());
-      const n = Number(s);
-      return (Number.isFinite(n) && Math.abs(n) >= 100) ? n : NaN;
-    };
+    function isValidOdds(n){ return Number.isFinite(n) && Math.abs(n) >= 100; }
 
-    // $ mask (digits -> cents)
+    // ---------- $ input mask (digits => cents) ----------
     function getCents(el){ const d=el.dataset.cents; return d? parseInt(d,10) : 0; }
     function setCents(el,c){ c=Math.max(0,Math.trunc(c||0)); el.dataset.cents=String(c); el.value="$"+(c/100).toFixed(2); }
     function attachMoneyMask(el, onChange){
       const normalize=()=>{
         const digits=(el.value||"").replace(/\D/g,"");
-        const cents=digits===""?0:parseInt(digits,10);
-        setCents(el,cents); onChange&&onChange();
+        const cents = digits==="" ? 0 : parseInt(digits,10);
+        setCents(el,cents);
+        onChange && onChange();
       };
-      if(!el.dataset.cents) setCents(el,0); else setCents(el,getCents(el));
-      el.addEventListener("input", normalize);
-      el.addEventListener("paste",(e)=>{e.preventDefault(); const t=(e.clipboardData.getData("text")||"").replace(/\D/g,""); setCents(el,t===""?0:parseInt(t,10)); onChange&&onChange();});
-      el.addEventListener("focus",()=>{requestAnimationFrame(()=>{try{el.setSelectionRange(el.value.length,el.value.length);}catch{}});});
+      // init display
+      setCents(el, getCents(el));
+      el.addEventListener("input", normalize); // mobile-safe
+      el.addEventListener("paste",(e)=>{ e.preventDefault(); const t=(e.clipboardData.getData("text")||"").replace(/\D/g,""); setCents(el,t===""?0:parseInt(t,10)); onChange&&onChange(); });
+      el.addEventListener("focus",()=>{ requestAnimationFrame(()=>{ try{ el.setSelectionRange(el.value.length,el.value.length); }catch{} }); });
     }
     const parseMoney = (el)=>{ const cents=getCents(el); return Number.isFinite(cents)? cents/100 : NaN; };
 
-    // ---------- Calcs ----------
-    function calculate1(){
-      const o = readOdds($("odds"));
+    // ---------- Calculators ----------
+    function calculateStake(){
+      const o = readOddsLoose($("odds"));
       const w = parseMoney($("win"));
-      const oddsValid = Number.isFinite(o);
-      const winValid = Number.isFinite(w);
-      setValidity($("odds"), oddsValid);
-      setValidity($("win"), winValid);
-      $("oddsHelp").textContent = oddsValid ? "Tap ± to flip sign if needed." : "Use American odds with |odds| ≥ 100 (e.g., -110, +120).";
-      if(!oddsValid || !winValid){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
+      const okOdds = isValidOdds(o);
+      const okWin = Number.isFinite(w);
+      setValidity($("odds"), okOdds);
+      setValidity($("win"), okWin);
+      $("oddsHelp").textContent = okOdds ? "Tap ± to flip sign if needed." : "Use American odds with |odds| ≥ 100 (e.g., -110, +120).";
+      if (!okOdds || !okWin){
+        $("stakeOut").textContent = "—";
+        $("breakeven1").textContent = "—";
+        return;
+      }
       $("stakeOut").textContent = fmtUSD(stakeForWin(o, w));
       $("breakeven1").textContent = fmtPct(americanToProb(o));
     }
 
     function calculateJuice(){
-      const aStr = sanitizeOddsString($("sideA").value.trim());
-      const bStr = sanitizeOddsString($("sideB").value.trim());
-      const a = Number(aStr), b = Number(bStr);
+      const a = readOddsLoose($("sideA"));
+      const b = readOddsLoose($("sideB"));
       const aOk = Number.isFinite(a) && a!==0;
       const bOk = Number.isFinite(b) && b!==0;
-      setValidity($("sideA"), aOk); setValidity($("sideB"), bOk);
-      if(!aOk || !bOk){ $("sumImpl").textContent="—"; $("juicePct").textContent="—"; $("nvProbs").textContent="—"; $("nvOdds").textContent="—"; return; }
+      setValidity($("sideA"), aOk);
+      setValidity($("sideB"), bOk);
+      if (!aOk || !bOk){
+        $("sumImpl").textContent="—";
+        $("juicePct").textContent="—";
+        $("nvProbs").textContent="—";
+        $("nvOdds").textContent="—";
+        return;
+      }
       const pA = americanToProb(a), pB = americanToProb(b);
       const sum = pA + pB, juice = sum - 1;
       $("sumImpl").textContent = fmtPct(sum);
       $("juicePct").textContent = fmtPct(juice);
-      if(sum>0){
+      if (sum>0){
         const nvA=pA/sum, nvB=pB/sum;
         $("nvProbs").textContent = fmtPct(nvA)+" / "+fmtPct(nvB);
         $("nvOdds").textContent = fmtOdds(probToAmerican(nvA))+" / "+fmtOdds(probToAmerican(nvB));
-      }else{ $("nvProbs").textContent="—"; $("nvOdds").textContent="—"; }
+      } else {
+        $("nvProbs").textContent="—";
+        $("nvOdds").textContent="—";
+      }
     }
 
     // ---------- Wiring ----------
     function bind(){
-      attachOddsGuard($("odds"), calculate1);
-      attachMoneyMask($("win"), calculate1);
+      // Money mask
+      attachMoneyMask($("win"), calculateStake);
 
-      // Sync Side A from main odds until user edits Side A
-      let userEditedSideA = false;
-      $("sideA").addEventListener("input", ()=>{ userEditedSideA = true; });
-      const syncSideA = ()=>{
-        if (userEditedSideA) return;
-        $("sideA").value = $("odds").value;
-        $("sideA").dispatchEvent(new Event("input",{bubbles:true}));
-      };
-      $("odds").addEventListener("input", syncSideA);
-      // initial sync
-      syncSideA();
-
-      $("toggleBtn").addEventListener("click", ()=>{
-        const el=$("odds"); const s=sanitizeOddsString(el.value.trim());
-        if(!s) return;
-        const flipped = (s[0]==='-') ? s.slice(1) : (s[0]==='+' ? '-'+s.slice(1) : '-'+s);
-        el.value = flipped;
-        el.dispatchEvent(new Event("input",{bubbles:true}));
+      // Odds input (non-blocking)
+      $("odds").addEventListener("input", ()=>{
+        calculateStake();
+        if (!userEditedSideA){ // keep Side A synced until user edits A
+          $("sideA").value = $("odds").value;
+          calculateJuice();
+        }
       });
 
-      const deb=(fn,ms=120)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);}};
-      $("sideA").addEventListener("input", deb(calculateJuice));
-      $("sideB").addEventListener("input", deb(calculateJuice));
-      $("flipA").addEventListener("click", ()=>{ const el=$("sideA"); const v=el.value.trim(); el.value = v.startsWith("-")? v.replace(/^-/,"") : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); el.dispatchEvent(new Event("input",{bubbles:true})); });
-      $("flipB").addEventListener("click", ()=>{ const el=$("sideB"); const v=el.value.trim(); el.value = v.startsWith("-")? v.replace(/^-/,"") : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); el.dispatchEvent(new Event("input",{bubbles:true})); });
+      // Toggle sign for stake odds
+      $("toggleBtn").addEventListener("click", ()=>{
+        const v = $("odds").value.trim();
+        if (!v) return;
+        $("odds").value = v.startsWith("-") ? v.slice(1) : (v.startsWith("+") ? "-"+v.slice(1) : "-"+v);
+        $("odds").dispatchEvent(new Event("input",{bubbles:true}));
+      });
 
-      calculate1();
+      // Juice inputs
+      let deb; const debounce=(fn,ms=120)=>{clearTimeout(deb); deb=setTimeout(fn,ms);};
+      let userEditedSideA = false;
+      $("sideA").addEventListener("input", ()=>{ userEditedSideA = true; debounce(calculateJuice); });
+      $("sideB").addEventListener("input", ()=>debounce(calculateJuice));
+      $("flipA").addEventListener("click", ()=>{ const v=$("sideA").value.trim(); if(!v) return; $("sideA").value = v.startsWith("-")? v.slice(1) : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); $("sideA").dispatchEvent(new Event("input",{bubbles:true})); });
+      $("flipB").addEventListener("click", ()=>{ const v=$("sideB").value.trim(); if(!v) return; $("sideB").value = v.startsWith("-")? v.slice(1) : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); $("sideB").dispatchEvent(new Event("input",{bubbles:true})); });
+
+      // Initial states
+      setCents($("win"), 0);
+      calculateStake();
+
+      // Prefill Side A from stake odds initially
+      $("sideA").value = $("odds").value;
       calculateJuice();
 
-      // Focus Side B prompt if Side A was auto-set
+      // Focus Side B to prompt entry
       setTimeout(()=>{ try{ $("sideB").focus(); }catch{} }, 0);
     }
     if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", bind); else bind();
