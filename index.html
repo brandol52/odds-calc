@@ -11,7 +11,11 @@
       --card:#0f172a;--border:#1f2537;--accent:#22c55e;--bad:#ef4444
     }
     *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--fg);min-height:100dvh;display:flex;flex-direction:column;padding-top:calc(env(safe-area-inset-top) + 8px);padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}.wrap{max-width:560px;width:100%;margin:0 auto;padding:12px;flex:1;display:grid;grid-template-rows:auto auto auto 1fr auto;row-gap:10px;overflow:hidden}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:var(--bg);color:var(--fg);min-height:100dvh;display:flex;flex-direction:column;
+      padding-top:calc(env(safe-area-inset-top) + 8px);padding-bottom:env(safe-area-inset-bottom);
+      padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+    .wrap{max-width:560px;width:100%;margin:0 auto;padding:12px;flex:1;display:grid;grid-template-rows:auto auto auto 1fr auto;row-gap:10px;overflow:hidden}
     h1{font-size:18px;margin:0 0 4px}
     .muted{color:var(--muted)}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
@@ -23,12 +27,8 @@
     input[type="text"]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
     button.toggle{border:1px solid var(--border);background:#0b1324;color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
     .invalid{border-color:var(--bad)}
-    .result{display:flex;justify-content:space-between;gap:10px;font-variant-numeric:tabular-nums}
-    .result .val{font-weight:600}
-    .result-line{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border-radius:10px;border:1px solid var(--border)}
+    .result-line{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border-radius:10px;border:1px solid var(--border);font-variant-numeric:tabular-nums}
     .small{font-size:12px}
-    .spacer8{height:8px}
-  
     @media (max-width: 430px) {
       h1{font-size:16px}
       .card{padding:12px;border-radius:12px}
@@ -38,13 +38,7 @@
       .muted{opacity:0.95}
       .wrap{row-gap:8px}
     }
-    /* Reduce vertical growth of sections so the whole layout fits without scroll on iPhone 13-15 */
-    .card{contain:content}
-    header, footer{min-height:0}
-    section.card{min-height:0}
-    /* Prevent accidental page scroll while interacting */
     html, body {overscroll-behavior: contain}
-
   </style>
   <link rel="manifest" href="./manifest.webmanifest">
 </head>
@@ -61,7 +55,7 @@
       <div class="row">
         <div class="col">
           <label for="odds">American Odds</label>
-          <input id="odds" type="text" inputmode="numeric" pattern="-?\d*" placeholder="+150 or -120" aria-describedby="oddsHelp">
+          <input id="odds" type="text" inputmode="numeric" pattern="-?\\d*" placeholder="+150 or -120" aria-describedby="oddsHelp">
           <div id="oddsHelp" class="small muted">Tap ± to flip sign if needed.</div>
         </div>
         <div>
@@ -72,10 +66,9 @@
       <div class="row">
         <div class="col">
           <label for="win">Target Win ($)</label>
-          <input id="win" type="text" inputmode="decimal" placeholder="e.g. 10.00">
+          <input id="win" type="text" inputmode="numeric" placeholder="$0.00" value="$0.00" aria-label="Target Win in dollars">
         </div>
       </div>
-      <div class="spacer8"></div>
       <div class="result-line" aria-live="polite" aria-atomic="true">
         <div>Stake Required</div>
         <div class="val" id="stakeOut">—</div>
@@ -86,30 +79,29 @@
       </div>
     </section>
 
-    <!-- Calculator 2: Juice Calculator (replaces Win from Stake) -->
+    <!-- Calculator 2: Juice Calculator -->
     <section class="card" aria-labelledby="juiceCalc">
       <h2 id="juiceCalc" class="muted" style="font-size:14px;margin:0">Juice / Overround</h2>
       <div class="row">
         <div class="col">
           <label for="sideA">Side A Odds</label>
-          <input id="sideA" type="text" inputmode="numeric" pattern="-?\d*" placeholder="-110">
+          <input id="sideA" type="text" inputmode="numeric" pattern="-?\\d*" placeholder="-110">
         </div>
         <div>
           <label for="flipA" class="muted small">&nbsp;</label>
-          <button id="flipA" class="toggle" type="button" title="Switch sign A" aria-label="Switch sign A">±</button>
+          <button id="flipA" class="toggle" type="button">±</button>
         </div>
       </div>
       <div class="row">
         <div class="col">
           <label for="sideB">Side B Odds</label>
-          <input id="sideB" type="text" inputmode="numeric" pattern="-?\d*" placeholder="-110">
+          <input id="sideB" type="text" inputmode="numeric" pattern="-?\\d*" placeholder="-110">
         </div>
         <div>
           <label for="flipB" class="muted small">&nbsp;</label>
-          <button id="flipB" class="toggle" type="button" title="Switch sign B" aria-label="Switch sign B">±</button>
+          <button id="flipB" class="toggle" type="button">±</button>
         </div>
       </div>
-      <div class="spacer8"></div>
       <div class="result-line" aria-live="polite" aria-atomic="true">
         <div>Total Implied (A+B)</div>
         <div class="val" id="sumImpl">—</div>
@@ -119,21 +111,22 @@
         <div class="val" id="juicePct">—</div>
       </div>
       <div class="result-line">
-        <div>No‑Vig Prob A / B</div>
+        <div>No-Vig Prob A / B</div>
         <div class="val" id="nvProbs">—</div>
       </div>
       <div class="result-line">
-        <div>No‑Vig Odds A / B</div>
+        <div>No-Vig Odds A / B</div>
         <div class="val" id="nvOdds">—</div>
       </div>
-      <div class="small muted">Tip: enter both sides of a 2‑way market (e.g., spread or total). Overround = (ImpA + ImpB − 1).</div>
+      <div class="small muted">Enter both sides of a 2-way market (spread or total). Overround = (ImpA + ImpB − 1).</div>
     </section>
 
-    <footer class="small muted" style="text-align:center;padding:6px 0 12px">Built by Bryan Randol (Pikkit: @Shakademus) • Build-Seasmoke</footer>
+    <footer class="small muted" style="text-align:center;padding:6px 0 12px">
+      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Seasmoke
+    </footer>
   </div>
 
   <script>
-    // ---------- Math helpers ----------
     const americanToProb = (o) => {
       if (!Number.isFinite(o) || o === 0) return NaN;
       return o > 0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100);
@@ -146,8 +139,6 @@
       if (!Number.isFinite(o) || !Number.isFinite(want) || o === 0) return NaN;
       return o > 0 ? (want*100)/o : (want*Math.abs(o))/100;
     };
-
-    // ---------- DOM utils ----------
     const $ = (id) => document.getElementById(id);
     const parseOdds = (el) => {
       const t = (el.value || "").replace(/[^0-9+-]/g,"");
@@ -155,12 +146,6 @@
       const n = Number(t);
       if (!Number.isFinite(n) || n === 0) return NaN;
       return n;
-    };
-    const parseMoney = (el) => {
-      const t = (el.value || "").replace(/[^0-9.]/g,"");
-      if (t === "" || /^\.$/.test(t)) return NaN;
-      const n = Number(t);
-      return Number.isFinite(n) && n >= 0 ? n : NaN;
     };
     const fmtUSD = (n) => isNaN(n) ? "—" : "$" + n.toFixed(2);
     const fmtPct = (p) => isNaN(p) ? "—" : (p*100).toFixed(2) + "%";
@@ -171,13 +156,64 @@
       if (ok) el.classList.remove("invalid"); else el.classList.add("invalid");
     };
 
-    // ---------- Calc 1: Stake -> Win ----------
+    // ----- Currency input mask -----
+    function getCents(el){ const d = el.dataset.cents; return d? parseInt(d,10) : 0; }
+    function setCents(el, cents){
+      cents = Math.max(0, Math.trunc(cents||0));
+      el.dataset.cents = String(cents);
+      el.value = "$" + (cents/100).toFixed(2);
+    }
+    function handleCurrencyKeyDown(e){
+      const allowedCtrl = ["Backspace","Delete","Tab","ArrowLeft","ArrowRight","Home","End"];
+      if (e.ctrlKey || e.metaKey) return;
+      if (allowedCtrl.includes(e.key)) {
+        if (e.key==="Backspace"){
+          const c = getCents(e.target);
+          setCents(e.target, Math.floor(c/10));
+          e.preventDefault(); e.target.dispatchEvent(new Event("change"));
+        } else if (e.key==="Delete"){
+          setCents(e.target,0);
+          e.preventDefault(); e.target.dispatchEvent(new Event("change"));
+        }
+        return;
+      }
+      if (/^\\d$/.test(e.key)){
+        const c = getCents(e.target);
+        const n = c*10 + parseInt(e.key,10);
+        setCents(e.target, n);
+        e.preventDefault(); e.target.dispatchEvent(new Event("change"));
+        return;
+      }
+      e.preventDefault();
+    }
+    function handleCurrencyPaste(e){
+      e.preventDefault();
+      const text = (e.clipboardData.getData("text")||"").replace(/[^0-9.]/g,"");
+      if(!text){ return; }
+      let cents = 0;
+      if (text.includes(".")){
+        const num = Number(text);
+        if (Number.isFinite(num) && num>=0){ cents = Math.round(num*100); }
+      } else {
+        const num = Number(text);
+        if (Number.isFinite(num) && num>=0){ cents = Math.round(num*100); }
+      }
+      setCents(e.target, cents);
+      e.target.dispatchEvent(new Event("change"));
+    }
+    const parseMoney = (el) => {
+      const cents = getCents(el);
+      return Number.isFinite(cents) ? cents/100 : NaN;
+    };
+
     function calculate1() {
       const o = parseOdds($("odds"));
       const w = parseMoney($("win"));
-      setValidity($("odds"), Number.isFinite(o));
-      setValidity($("win"), Number.isFinite(w));
-      if (!Number.isFinite(o) || !Number.isFinite(w)) {
+      const oddsValid = Number.isFinite(o) && Math.abs(o) >= 100;
+      const winValid = Number.isFinite(w);
+      setValidity($("odds"), oddsValid);
+      setValidity($("win"), winValid);
+      if (!oddsValid || !winValid) {
         $("stakeOut").textContent = "—";
         $("breakeven1").textContent = "—";
         return;
@@ -188,7 +224,6 @@
       $("breakeven1").textContent = fmtPct(p);
     }
 
-    // ---------- Calc 2: Juice / Overround ----------
     function calculateJuice() {
       const a = parseOdds($("sideA"));
       const b = parseOdds($("sideB"));
@@ -204,11 +239,9 @@
       const pA = americanToProb(a);
       const pB = americanToProb(b);
       const sum = pA + pB;
-      const juice = sum - 1; // overround
+      const juice = sum - 1;
       $("sumImpl").textContent = fmtPct(sum);
       $("juicePct").textContent = fmtPct(juice);
-
-      // No-vig normalization
       if (sum > 0) {
         const nvA = pA / sum;
         const nvB = pB / sum;
@@ -222,12 +255,20 @@
       }
     }
 
-    // ---------- Wiring & toggles ----------
     function bind() {
       const debounce = (fn, ms=120) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms);} };
       $("odds").addEventListener("input", debounce(calculate1));
-      $("win").addEventListener("input", debounce(calculate1));
-      $("toggleBtn").addEventListener("click", () => { const el=$("odds"); const v=parseOdds(el); if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v)); calculate1(); });
+      const winEl = $("win");
+      setCents(winEl, getCents(winEl));
+      winEl.addEventListener("keydown", handleCurrencyKeyDown);
+      winEl.addEventListener("paste", handleCurrencyPaste);
+      winEl.addEventListener("change", calculate1);
+
+      $("toggleBtn").addEventListener("click", () => {
+        const el=$("odds"); const v=parseOdds(el);
+        if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v));
+        calculate1();
+      });
 
       const jcalc = debounce(calculateJuice);
       $("sideA").addEventListener("input", jcalc);
@@ -235,18 +276,13 @@
       $("flipA").addEventListener("click", () => { const el=$("sideA"); const v=parseOdds(el); if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v)); calculateJuice(); });
       $("flipB").addEventListener("click", () => { const el=$("sideB"); const v=parseOdds(el); if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v)); calculateJuice(); });
 
-      // Initial computes
       calculate1();
       calculateJuice();
     }
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", bind);
-    } else { bind(); }
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind);
+    else bind();
   </script>
-
   <script>
-    // PWA: register service worker if present
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
     }
