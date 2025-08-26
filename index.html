@@ -26,7 +26,15 @@
     .invalid{border-color:var(--bad)}
     .result-line{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border-radius:10px;border:1px solid var(--border);font-variant-numeric:tabular-nums}
     .small{font-size:12px}
-    @media (max-width: 430px){h1{font-size:16px}.card{padding:12px;border-radius:12px}.result-line{padding:6px 8px}input[type="text"]{padding:9px 10px;font-size:15px}.small{font-size:11px}.muted{opacity:.95}.wrap{row-gap:8px}}
+    @media (max-width: 430px){
+      h1{font-size:16px}
+      .card{padding:12px;border-radius:12px}
+      .result-line{padding:6px 8px}
+      input[type="text"]{padding:9px 10px;font-size:15px}
+      .small{font-size:11px}
+      .muted{opacity:.95}
+      .wrap{row-gap:8px}
+    }
     html, body {overscroll-behavior: contain}
   </style>
   <link rel="manifest" href="./manifest.webmanifest">
@@ -128,73 +136,49 @@
     const setValidity = (el, ok) => { if(!el) return; el.classList.toggle("invalid", !ok); };
 
     // ---------- Odds ----------
-    function readOddsLoose(el){ const t=(el.value||"").trim(); if(!/^[+-]?\\d+$/.test(t)) return NaN; return Number(t); }
+    function readOddsLoose(el){
+      const t=(el.value||"").trim();
+      if(!/^[+-]?\d+$/.test(t)) return NaN;   // allow empty/partial while editing
+      return Number(t);
+    }
     function isValidOdds(n){ return Number.isFinite(n) && Math.abs(n) >= 100; }
 
-    // ---------- $ input mask with commas (digit buffer) ----------
-    function setFromDigits(el, digits){
-      // digits: string of 0-9 representing cents
-      if (!/^[0-9]*$/.test(digits)) digits = "";
-      // clamp length to something reasonable (e.g., 11 digits -> $99,999,999.99)
-      if (digits.length > 11) digits = digits.slice(0, 11);
-      el.dataset.digits = digits;
-      const cents = digits === "" ? 0 : parseInt(digits, 10);
-      el.value = USD.format(cents / 100);
+    // ---------- $ input mask (simple & iPhone-safe) ----------
+    // We keep the user's number as raw digits (cents) in data-digits.
+    function digitsToUSD(digits){
+      if (!digits) return USD.format(0);
+      const cents = parseInt(digits,10) || 0;
+      return USD.format(cents/100);
     }
     function attachMoneyMask(el, onChange){
-      // Initialize
-      if (!el.dataset.digits) setFromDigits(el, "");
-      else setFromDigits(el, el.dataset.digits);
+      // initialize
+      if (!el.dataset.digits) el.dataset.digits = "";
+      el.value = digitsToUSD(el.dataset.digits);
 
-      // Prefer beforeinput for reliable iOS behavior
-      const onBeforeInput = (e) => {
-        const type = e.inputType;
-        const data = e.data;
-        let digits = el.dataset.digits || "";
-        if (type === "insertText" && /\\d/.test(data)) {
-          digits += data;
-        } else if (type === "deleteContentBackward") {
-          digits = digits.slice(0, -1);
-        } else if (type === "insertFromPaste") {
-          const pasted = (e.clipboardData?.getData("text") || "").replace(/\\D/g,"");
-          digits += pasted;
-        } else {
-          // Fallback: rebuild from the control's current value
-          const raw = (el.value || "").replace(/\\D/g,"");
-          digits = raw;
-        }
-        e.preventDefault(); // we fully control the value
-        setFromDigits(el, digits);
-        onChange && onChange();
-      };
-
-      const onInputFallback = () => {
-        // For browsers without beforeinput support
-        const raw = (el.value || "").replace(/\\D/g,"");
-        setFromDigits(el, raw);
-        onChange && onChange();
-      };
-
-      el.addEventListener("beforeinput", onBeforeInput);
-      el.addEventListener("input", onInputFallback);
-      el.addEventListener("paste", (e) => {
-        // Some browsers fire paste without beforeinput
-        e.preventDefault();
-        const pasted = (e.clipboardData?.getData("text") || "").replace(/\\D/g,"");
-        const digits = (el.dataset.digits || "") + pasted;
-        setFromDigits(el, digits);
+      el.addEventListener("input", () => {
+        // Whatever is in the box, reduce to digits only, treat as cents
+        const rawDigits = (el.value || "").replace(/\D/g, "");
+        el.dataset.digits = rawDigits;
+        el.value = digitsToUSD(rawDigits);
         onChange && onChange();
       });
+
+      el.addEventListener("paste", (e) => {
+        e.preventDefault();
+        const pasted = (e.clipboardData?.getData("text") || "").replace(/\D/g,"");
+        el.dataset.digits = (el.dataset.digits || "") + pasted;
+        el.value = digitsToUSD(el.dataset.digits);
+        onChange && onChange();
+      });
+
       el.addEventListener("focus", () => {
-        // Put caret at end
         requestAnimationFrame(() => { try { el.setSelectionRange(el.value.length, el.value.length); } catch {} });
       });
     }
     const parseMoney = (el) => {
       const digits = el.dataset.digits || "";
-      if (digits === "") return 0;
-      const cents = parseInt(digits, 10);
-      return Number.isFinite(cents) ? cents / 100 : NaN;
+      const cents = digits === "" ? 0 : parseInt(digits,10);
+      return Number.isFinite(cents) ? cents/100 : NaN;
     };
 
     // ---------- Calculations ----------
@@ -248,7 +232,7 @@
       // Money mask
       attachMoneyMask($("win"), calculateStake);
 
-      // Odds input (validate, but don't block) + hard sync to Side A
+      // Odds input: validate (non-blocking) + hard sync to Side A
       $("odds").addEventListener("input", ()=>{
         calculateStake();
         $("sideA").value = $("odds").value;
@@ -271,9 +255,10 @@
       $("flipB").addEventListener("click", ()=>{ const v=$("sideB").value.trim(); if(!v) return; $("sideB").value = v.startsWith("-")? v.slice(1) : (v.startsWith("+")? "-"+v.slice(1) : "-"+v); $("sideB").dispatchEvent(new Event("input",{bubbles:true})); });
 
       // Initialize
-      setFromDigits($("win"), "");          // show $0.00
+      $("win").dataset.digits = "";           // show $0.00
+      $("win").value = digitsToUSD("");
       calculateStake();
-      $("sideA").value = $("odds").value;   // initial autofill
+      $("sideA").value = $("odds").value;     // initial autofill
       calculateJuice();
     }
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind); else bind();
