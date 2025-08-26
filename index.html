@@ -4,8 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Odds Calc</title>
+  <meta name="theme-color" content="#0c111b">
   <style>
-    :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537;--accent:#22c55e}
+    :root{
+      --bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;
+      --card:#0f172a;--border:#1f2537;--accent:#22c55e;--bad:#ef4444
+    }
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:var(--bg);color:var(--fg);min-height:100vh;display:flex;flex-direction:column;
@@ -13,109 +17,228 @@
       padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
     .wrap{max-width:560px;width:100%;margin:0 auto;padding:16px;flex:1;display:flex;flex-direction:column;gap:16px}
     h1{font-size:18px;margin:0 0 4px}
-    .section-title{font-size:14px;color:var(--muted);margin:0 2px 6px}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
-    .inputs-line{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
-    label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
-    .odds-line{display:grid;grid-template-columns:56px 1fr;gap:8px}
-    .btn{padding:12px;border-radius:12px;border:1px solid var(--border);background:#0d1930;color:var(--fg);font-size:1.05rem;cursor:pointer}
-    .btn:active{transform:translateY(1px)}
-    .btn-clear{width:100%;margin:10px 0;padding:14px;font-size:1rem;background:#1a2238}
-    input[type="text"]{width:100%;padding:12px 14px;border-radius:12px;background:#0a1020;color:var(--fg);
-      border:1px solid var(--border);outline:none;font-size:1.05rem}
-    input:focus{border-color:#2dd4bf;box-shadow:0 0 0 .12rem rgba(45,212,191,.16)}
-    input.invalid{border-color:#f87171 !important;box-shadow:0 0 0 .12rem rgba(248,113,113,.25)}
-    .error{color:#f87171;font-size:.85rem;margin-top:4px;display:none}
-    .stake{margin-top:10px;background:#0a1020;border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
-    .stake small{display:block;color:var(--muted);font-size:.85rem;margin-bottom:6px}
-    .stake .val{font-weight:900;letter-spacing:.2px;font-size:2rem;color:var(--accent)}
-    .stake .be-label{margin-top:10px;font-size:.85rem;color:var(--muted);text-align:left}
-    .stake .be{font-size:.95rem;font-weight:600;color:var(--fg);text-align:left}
-    .divider{height:1px;background:var(--border);margin:8px 0}
-    .foot{color:var(--muted);font-size:.78rem;text-align:center;margin:6px 0 8px}
+    .muted{color:var(--muted)}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+    .row{display:flex;gap:10px;align-items:center}
+    .col{flex:1}
+    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    input[type="text"]{width:100%;background:#0b1324;border:1px solid var(--border);border-radius:10px;
+      color:var(--fg);padding:10px 12px;font-size:16px;outline:none}
+    input[type="text"]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
+    button.toggle{border:1px solid var(--border);background:#0b1324;color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
+    .invalid{border-color:var(--bad)}
+    .result{display:flex;justify-content:space-between;gap:10px;font-variant-numeric:tabular-nums}
+    .result .val{font-weight:600}
+    .result-line{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border-radius:10px;border:1px solid var(--border)}
+    .small{font-size:12px}
+    .spacer8{height:8px}
   </style>
+  <link rel="manifest" href="./manifest.webmanifest">
 </head>
 <body>
   <div class="wrap">
-    <div>
-      <h1>American Odds — App Mode</h1>
-      <p class="section-title">Calculator 1: Enter odds + desired win → shows stake</p>
-      <div class="card" id="calc1">
-        <div class="inputs-line">
-          <div>
-            <label for="odds">American Odds</label>
-            <div class="odds-line">
-              <button type="button" class="btn" id="toggleBtn">−</button>
-              <input id="odds" type="text" inputmode="numeric" aria-label="American odds">
-            </div>
-            <div class="error" id="oddsError">Odds must be ≤ -100 or ≥ +100</div>
-          </div>
-          <div>
-            <label for="win">Amount to Win</label>
-            <input id="win" type="text" inputmode="numeric" aria-label="Amount to win in dollars">
-          </div>
+    <header>
+      <h1>Odds Calc</h1>
+      <div class="muted small">Stake/Win math and market juice.</div>
+    </header>
+
+    <!-- Calculator 1: Stake to Win -->
+    <section class="card" aria-labelledby="calc1">
+      <h2 id="calc1" class="muted" style="font-size:14px;margin:0">Stake → Win</h2>
+      <div class="row">
+        <div class="col">
+          <label for="odds">American Odds</label>
+          <input id="odds" type="text" inputmode="numeric" pattern="-?\d*" placeholder="+150 or -120" aria-describedby="oddsHelp">
+          <div id="oddsHelp" class="small muted">Tap ± to flip sign if needed.</div>
         </div>
-        <button type="button" class="btn btn-clear" id="clearBtn">Clear</button>
-        <div class="stake">
-          <small>Required Amount to Bet</small>
-          <div class="val" id="stake">$0.00</div>
-          <div class="be-label">Implied Win Rate</div>
-          <div class="be" id="breakeven">—</div>
+        <div>
+          <label for="toggleBtn" class="muted small">&nbsp;</label>
+          <button id="toggleBtn" class="toggle" type="button" title="Switch sign" aria-label="Switch sign">±</button>
         </div>
       </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div>
-      <p class="section-title">Calculator 2: Enter odds + stake → shows win</p>
-      <div class="card" id="calc2">
-        <div class="inputs-line">
-          <div>
-            <label for="odds2">American Odds</label>
-            <div class="odds-line">
-              <button type="button" class="btn" id="toggleBtn2">−</button>
-              <input id="odds2" type="text" inputmode="numeric" aria-label="American odds">
-            </div>
-            <div class="error" id="oddsError2">Odds must be ≤ -100 or ≥ +100</div>
-          </div>
-          <div>
-            <label for="stakeIn">Stake Amount</label>
-            <input id="stakeIn" type="text" inputmode="numeric" aria-label="Stake amount in dollars">
-          </div>
-        </div>
-        <button type="button" class="btn btn-clear" id="clearBtn2">Clear</button>
-        <div class="stake">
-          <small>Amount You’d Win</small>
-          <div class="val" id="winOut">$0.00</div>
-          <div class="be-label">Implied Win Rate</div>
-          <div class="be" id="breakeven2">—</div>
+      <div class="row">
+        <div class="col">
+          <label for="win">Target Win ($)</label>
+          <input id="win" type="text" inputmode="decimal" placeholder="e.g. 10.00">
         </div>
       </div>
-    </div>
+      <div class="spacer8"></div>
+      <div class="result-line" aria-live="polite" aria-atomic="true">
+        <div>Stake Required</div>
+        <div class="val" id="stakeOut">—</div>
+      </div>
+      <div class="result-line">
+        <div>Break-even (Implied)</div>
+        <div class="val" id="breakeven1">—</div>
+      </div>
+    </section>
 
-    <div class="foot">© Bryan Randol<br><small id="version">Build v08-18-2025-15</small></div>
+    <!-- Calculator 2: Juice Calculator (replaces Win from Stake) -->
+    <section class="card" aria-labelledby="juiceCalc">
+      <h2 id="juiceCalc" class="muted" style="font-size:14px;margin:0">Juice / Overround</h2>
+      <div class="row">
+        <div class="col">
+          <label for="sideA">Side A Odds</label>
+          <input id="sideA" type="text" inputmode="numeric" pattern="-?\d*" placeholder="-110">
+        </div>
+        <div>
+          <label for="flipA" class="muted small">&nbsp;</label>
+          <button id="flipA" class="toggle" type="button" title="Switch sign A" aria-label="Switch sign A">±</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label for="sideB">Side B Odds</label>
+          <input id="sideB" type="text" inputmode="numeric" pattern="-?\d*" placeholder="-110">
+        </div>
+        <div>
+          <label for="flipB" class="muted small">&nbsp;</label>
+          <button id="flipB" class="toggle" type="button" title="Switch sign B" aria-label="Switch sign B">±</button>
+        </div>
+      </div>
+      <div class="spacer8"></div>
+      <div class="result-line" aria-live="polite" aria-atomic="true">
+        <div>Total Implied (A+B)</div>
+        <div class="val" id="sumImpl">—</div>
+      </div>
+      <div class="result-line">
+        <div>Juice / Overround</div>
+        <div class="val" id="juicePct">—</div>
+      </div>
+      <div class="result-line">
+        <div>No‑Vig Prob A / B</div>
+        <div class="val" id="nvProbs">—</div>
+      </div>
+      <div class="result-line">
+        <div>No‑Vig Odds A / B</div>
+        <div class="val" id="nvOdds">—</div>
+      </div>
+      <div class="small muted">Tip: enter both sides of a 2‑way market (e.g., spread or total). Overround = (ImpA + ImpB − 1).</div>
+    </section>
+
+    <footer class="small muted" style="text-align:center;padding:8px 0 24px">
+      v1.1 — Juice calculator added
+    </footer>
   </div>
+
   <script>
-    const VERSION="v08-18-2025-15";document.getElementById("version").textContent="Build "+VERSION;
-    const $=id=>document.getElementById(id),money=v=>(isFinite(v)?(Math.round(v*100)/100).toLocaleString(undefined,{style:'currency',currency:'USD'}):"$0.00");
-    function parseOdds(r){if(!r)return null;r=String(r).trim();if(/^[+-]?\d+$/.test(r))return parseFloat(r);const c=r.replace(/[^\d\-+]/g,"");if(c===""||c==="+"||c==="-")return null;return parseFloat(c)}
-    function validOdds(n){return(n<=-100||n>=100)}
-    function formatOddsFieldFor(el,o){if(!el||o==null||!isFinite(o))return;const a=Math.abs(Math.trunc(o));el.value=(o>0?"+"+a:"-"+a)}
-    function impliedProb(o){if(o==null||!isFinite(o)||!validOdds(o))return null;return(o>0)?100/(o+100):Math.abs(o)/(Math.abs(o)+100)}
-    const getCents=el=>el?.dataset.cents?parseInt(el.dataset.cents,10):0,setCents=(el,c)=>{if(!el)return;const v=Math.max(0,isFinite(c)?Math.trunc(c):0);el.dataset.cents=String(v);el.value=(v/100).toLocaleString(undefined,{style:"currency",currency:"USD"})}
-    function handleCurrencyInput(e){const d=(e.target.value.match(/\d/g)||[]).join(""),c=d===""?0:parseInt(d,10);setCents(e.target,c)}
-    function handleCurrencyKeyDown(e){const a=["Backspace","Delete","ArrowLeft","ArrowRight","Tab","Home","End"];if(a.includes(e.key))return;if(/^\d$/.test(e.key))return;e.preventDefault()}
-    function handleCurrencyPaste(e){e.preventDefault();const t=(e.clipboardData||window.clipboardData||{getData:()=>""}).getData("text"),d=(t.match(/\d/g)||[]).join(""),c=d===""?getCents(e.target):parseInt(d,10);setCents(e.target,c)}
-    function calcStake(o,w){if(o==null||!isFinite(o)||!isFinite(w)||o===0)return NaN;return o>0?(w*100/o):(w*Math.abs(o)/100)}
-    function updateToggleLabel(b,o){if(!b)return;const s=(o!=null&&isFinite(o)&&o>0);b.textContent=s?"−":"+";b.title=s?"Switch to negative odds":"Switch to positive odds";b.setAttribute("aria-label",b.title)}
-    function calculate1(){const o=$("odds"),w=$("win"),s=$("stake"),e=$("oddsError"),b=$("breakeven");const odds=parseOdds(o?.value||""),win=getCents(w)/100;if(odds==null||!isFinite(odds)||!validOdds(odds)){s.textContent="$0.00";e.style.display="block";b.textContent="—";o.classList.add("invalid")}else{const st=calcStake(odds,win);s.textContent=money(st);e.style.display="none";o.classList.remove("invalid");formatOddsFieldFor(o,odds);const p=impliedProb(odds);b.textContent=(p==null)?"—":(p*100).toFixed(2)+"%"}updateToggleLabel($("toggleBtn"),odds)}
-    function calcWin(o,st){if(o==null||!isFinite(o)||!isFinite(st)||o===0)return NaN;return o>0?(st*o/100):(st*100/Math.abs(o))}
-    function calculate2(){const o=$("odds2"),st=$("stakeIn"),w=$("winOut"),e=$("oddsError2"),b=$("breakeven2");const odds=parseOdds(o?.value||""),stake=getCents(st)/100;if(odds==null||!isFinite(odds)||!validOdds(odds)){w.textContent="$0.00";e.style.display="block";b.textContent="—";o.classList.add("invalid")}else{const winAmt=calcWin(odds,stake);w.textContent=money(winAmt);e.style.display="none";o.classList.remove("invalid");formatOddsFieldFor(o,odds);const p=impliedProb(odds);b.textContent=(p==null)?"—":(p*100).toFixed(2)+"%"}updateToggleLabel($("toggleBtn2"),odds)}
-    function bind1(){const o=$("odds"),w=$("win"),t=$("toggleBtn"),c=$("clearBtn");if(!o||!w||!t||!c)return false;w.addEventListener("input",e=>{handleCurrencyInput(e);calculate1()});w.addEventListener("keydown",handleCurrencyKeyDown);w.addEventListener("paste",e=>{handleCurrencyPaste(e);calculate1()});o.addEventListener("input",calculate1);o.addEventListener("blur",()=>{const n=parseOdds(o.value);if(n!=null&&isFinite(n)&&validOdds(n))formatOddsFieldFor(o,n)});t.addEventListener("click",()=>{let n=parseOdds(o.value);n=(n==null||!isFinite(n))?-110:(n*-1);o.value=String(n);calculate1()});c.addEventListener("click",()=>{o.value="";w.value="";w.dataset.cents="0";$("stake").textContent="$0.00";$("oddsError").style.display="none";$("breakeven").textContent="—";o.classList.remove("invalid")});return true}
-    function bind2(){const o=$("odds2"),st=$("stakeIn"),t=$("toggleBtn2"),c=$("clearBtn2");if(!o||!st||!t||!c)return false;st.addEventListener("input",e=>{handleCurrencyInput(e);calculate2()});st.addEventListener("keydown",handleCurrencyKeyDown);st.addEventListener("paste",e=>{handleCurrencyPaste(e);calculate2()});o.addEventListener("input",calculate2);o.addEventListener("blur",()=>{const n=parseOdds(o.value);if(n!=null&&isFinite(n)&&validOdds(n))formatOddsFieldFor(o,n)});t.addEventListener("click",()=>{let n=parseOdds(o.value);n=(n==null||!isFinite(n))?-110:(n*-1);o.value=String(n);calculate2()});c.addEventListener("click",()=>{o.value="";st.value="";st.dataset.cents="0";$("winOut").textContent="$0.00";$("oddsError2").style.display="none";$("breakeven2").textContent="—";o.classList.remove("invalid")});return true}
-    function init(){const ok1=bind1(),ok2=bind2();calculate1();calculate2();if(!ok1||!ok2)setTimeout(init,50)}
-    if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",init)}else{init()}
+    // ---------- Math helpers ----------
+    const americanToProb = (o) => {
+      if (!Number.isFinite(o) || o === 0) return NaN;
+      return o > 0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100);
+    };
+    const probToAmerican = (p) => {
+      if (!(p > 0 && p < 1)) return NaN;
+      return p > 0.5 ? -Math.round(100*p/(1-p)) : Math.round(100*(1-p)/p);
+    };
+    const stakeForWin = (o, want) => {
+      if (!Number.isFinite(o) || !Number.isFinite(want) || o === 0) return NaN;
+      return o > 0 ? (want*100)/o : (want*Math.abs(o))/100;
+    };
+
+    // ---------- DOM utils ----------
+    const $ = (id) => document.getElementById(id);
+    const parseOdds = (el) => {
+      const t = (el.value || "").replace(/[^0-9+-]/g,"");
+      if (t === "" || t === "+" || t === "-" || t === "+-" || t === "-+") return NaN;
+      const n = Number(t);
+      if (!Number.isFinite(n) || n === 0) return NaN;
+      return n;
+    };
+    const parseMoney = (el) => {
+      const t = (el.value || "").replace(/[^0-9.]/g,"");
+      if (t === "" || /^\.$/.test(t)) return NaN;
+      const n = Number(t);
+      return Number.isFinite(n) && n >= 0 ? n : NaN;
+    };
+    const fmtUSD = (n) => isNaN(n) ? "—" : "$" + n.toFixed(2);
+    const fmtPct = (p) => isNaN(p) ? "—" : (p*100).toFixed(2) + "%";
+    const fmtOdds = (o) => isNaN(o) ? "—" : (o>0?"+":"") + String(o);
+
+    const setValidity = (el, ok) => {
+      if (!el) return;
+      if (ok) el.classList.remove("invalid"); else el.classList.add("invalid");
+    };
+
+    // ---------- Calc 1: Stake -> Win ----------
+    function calculate1() {
+      const o = parseOdds($("odds"));
+      const w = parseMoney($("win"));
+      setValidity($("odds"), Number.isFinite(o));
+      setValidity($("win"), Number.isFinite(w));
+      if (!Number.isFinite(o) || !Number.isFinite(w)) {
+        $("stakeOut").textContent = "—";
+        $("breakeven1").textContent = "—";
+        return;
+      }
+      const stake = stakeForWin(o, w);
+      const p = americanToProb(o);
+      $("stakeOut").textContent = fmtUSD(stake);
+      $("breakeven1").textContent = fmtPct(p);
+    }
+
+    // ---------- Calc 2: Juice / Overround ----------
+    function calculateJuice() {
+      const a = parseOdds($("sideA"));
+      const b = parseOdds($("sideB"));
+      setValidity($("sideA"), Number.isFinite(a));
+      setValidity($("sideB"), Number.isFinite(b));
+      if (!Number.isFinite(a) || !Number.isFinite(b)) {
+        $("sumImpl").textContent = "—";
+        $("juicePct").textContent = "—";
+        $("nvProbs").textContent = "—";
+        $("nvOdds").textContent = "—";
+        return;
+      }
+      const pA = americanToProb(a);
+      const pB = americanToProb(b);
+      const sum = pA + pB;
+      const juice = sum - 1; // overround
+      $("sumImpl").textContent = fmtPct(sum);
+      $("juicePct").textContent = fmtPct(juice);
+
+      // No-vig normalization
+      if (sum > 0) {
+        const nvA = pA / sum;
+        const nvB = pB / sum;
+        $("nvProbs").textContent = fmtPct(nvA) + " / " + fmtPct(nvB);
+        const nvAOdds = probToAmerican(nvA);
+        const nvBOdds = probToAmerican(nvB);
+        $("nvOdds").textContent = fmtOdds(nvAOdds) + " / " + fmtOdds(nvBOdds);
+      } else {
+        $("nvProbs").textContent = "—";
+        $("nvOdds").textContent = "—";
+      }
+    }
+
+    // ---------- Wiring & toggles ----------
+    function bind() {
+      const debounce = (fn, ms=120) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms);} };
+      $("odds").addEventListener("input", debounce(calculate1));
+      $("win").addEventListener("input", debounce(calculate1));
+      $("toggleBtn").addEventListener("click", () => { const el=$("odds"); const v=parseOdds(el); if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v)); calculate1(); });
+
+      const jcalc = debounce(calculateJuice);
+      $("sideA").addEventListener("input", jcalc);
+      $("sideB").addEventListener("input", jcalc);
+      $("flipA").addEventListener("click", () => { const el=$("sideA"); const v=parseOdds(el); if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v)); calculateJuice(); });
+      $("flipB").addEventListener("click", () => { const el=$("sideB"); const v=parseOdds(el); if (Number.isFinite(v)) el.value = (v>0? -v : Math.abs(v)); calculateJuice(); });
+
+      // Initial computes
+      calculate1();
+      calculateJuice();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", bind);
+    } else { bind(); }
+  </script>
+
+  <script>
+    // PWA: register service worker if present
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+    }
   </script>
 </body>
 </html>
