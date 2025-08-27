@@ -2,261 +2,170 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-  <title>Odds Calc</title>
-  <meta name="theme-color" content="#0c111b">
-  <link rel="icon" type="image/x-icon" href="icons/favicon.ico">
-  <link rel="apple-touch-icon" sizes="192x192" href="icons/icon-192.png">
-  <link rel="apple-touch-icon" sizes="512x512" href="icons/icon-512.png">
-  <link rel="manifest" href="manifest.json">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Odds Calc (Stable)</title>
   <style>
-    :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537;--accent:#22c55e;--bad:#ef4444}
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--fg);
-      min-height:100dvh;display:flex;flex-direction:column;padding:8px env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
-    .wrap{max-width:560px;margin:0 auto;width:100%;display:grid;row-gap:10px}
-    h1{font-size:18px;margin:4px 0 0}
-    .muted{color:var(--muted)}
+    :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537;--ok:#22c55e;--bad:#ef4444}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    .wrap{max-width:560px;margin:0 auto;padding:12px;display:grid;row-gap:10px}
+    h1{margin:6px 0 2px;font-size:18px}.muted{color:var(--muted)}.small{font-size:12px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
-    .row{display:flex;gap:10px;align-items:center}
-    .col{flex:1}
-    label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+    .row{display:flex;gap:10px;align-items:center}.col{flex:1}
+    label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
     .field{position:relative}
-    input[type="text"]{width:100%;background:#0b1324;border:1px solid var(--border);border-radius:10px;color:var(--fg);
-      padding:10px 34px 10px 12px;font-size:16px;outline:none;-webkit-appearance:none}
-    input[type="text"]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
-    button.toggle{border:1px solid var(--border);background:#0b1324;color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
-    .invalid{border-color:var(--bad)} .valid{border-color:#22c55e}
+    input[type=text]{width:100%;background:#0b1324;border:1px solid var(--border);border-radius:10px;color:var(--fg);
+      padding:10px 34px 10px 12px;font-size:16px;outline:none}
+    input[type=text]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
+    .valid{border-color:var(--ok)}.invalid{border-color:var(--bad)}
     .icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px;line-height:1;pointer-events:none}
-    .field input.valid ~ .icon{color:#22c55e}.field input.valid ~ .icon::after{content:"✔"}
-    .field input.invalid ~ .icon{color:#ef4444}.field input.invalid ~ .icon::after{content:"✖"}
-    .result-line{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border-radius:10px;border:1px solid var(--border);font-variant-numeric:tabular-nums}
-    .small{font-size:12px}
-    @media (max-width:430px){h1{font-size:16px}.card{padding:12px}.result-line{padding:6px 8px}input[type="text"]{font-size:15px}}
+    .field input.valid ~ .icon{color:var(--ok)} .field input.valid ~ .icon::after{content:"✔"}
+    .field input.invalid ~ .icon{color:var(--bad)} .field input.invalid ~ .icon::after{content:"✖"}
+    button{border:1px solid var(--border);background:#0b1324;color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
+    .result{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border:1px solid var(--border);border-radius:10px;font-variant-numeric:tabular-nums}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <h1>Odds Calc</h1>
-      <div class="muted small">Stake/Win math and market juice.</div>
+      <div class="muted small">Stable build — stake/win & juice.</div>
     </header>
 
     <section class="card">
-      <h2 class="muted" style="font-size:14px;margin:0">Stake → Win</h2>
+      <h2 class="muted" style="margin:0;font-size:14px">Stake → Win</h2>
       <div class="row">
         <div class="col">
           <label for="odds">American Odds</label>
           <div class="field">
-            <input id="odds" type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="+150 or -120" aria-describedby="oddsHelp">
+            <input id="odds" type="text" inputmode="numeric" placeholder="+150 or -120" autocomplete="off" autocorrect="off" spellcheck="false">
             <span class="icon" aria-hidden="true"></span>
           </div>
-          <div class="small muted" id="oddsHelp">Use integer odds with |odds| ≥ 100.</div>
+          <div class="small muted">Use integer odds; |odds| ≥ 100.</div>
         </div>
         <div>
           <label class="small muted">&nbsp;</label>
-          <button id="toggleBtn" class="toggle" type="button">±</button>
+          <button id="toggleOdds" type="button">±</button>
         </div>
       </div>
       <div class="row">
         <div class="col">
           <label for="win">Target Win ($)</label>
           <div class="field">
-            <input id="win" type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="$0.00" value="$0.00" aria-describedby="winHelp">
+            <input id="win" type="text" inputmode="numeric" placeholder="$0.00" autocomplete="off" autocorrect="off" spellcheck="false">
             <span class="icon" aria-hidden="true"></span>
           </div>
-          <div class="small muted" id="winHelp">Enter digits; we’ll format to $X,XXX.XX.</div>
+          <div class="small muted">Digits only; auto-formats to $X,XXX.XX.</div>
         </div>
       </div>
-      <div class="result-line"><div>Stake Required</div><div id="stakeOut">—</div></div>
-      <div class="result-line"><div>Break-even (Implied)</div><div id="breakeven1">—</div></div>
+      <div class="result"><div>Stake Required</div><div id="stakeOut">—</div></div>
+      <div class="result"><div>Break-even (Implied)</div><div id="breakeven1">—</div></div>
     </section>
 
     <section class="card">
-      <h2 class="muted" style="font-size:14px;margin:0">Juice / Overround</h2>
+      <h2 class="muted" style="margin:0;font-size:14px">Juice / Overround</h2>
       <div class="row">
         <div class="col">
           <label for="sideA">Side A Odds</label>
           <div class="field">
-            <input id="sideA" type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="-110">
+            <input id="sideA" type="text" inputmode="numeric" placeholder="-110" autocomplete="off" autocorrect="off" spellcheck="false">
             <span class="icon" aria-hidden="true"></span>
           </div>
-          <div class="small muted">Auto-filled from Stake → Win odds.</div>
+          <div class="small muted">Auto-synced from Stake → Win odds.</div>
         </div>
         <div>
           <label class="small muted">&nbsp;</label>
-          <button id="flipA" class="toggle" type="button">±</button>
+          <button id="flipA" type="button">±</button>
         </div>
       </div>
       <div class="row">
         <div class="col">
           <label for="sideB">Side B Odds</label>
           <div class="field">
-            <input id="sideB" type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Enter the other side (e.g., -110)">
+            <input id="sideB" type="text" inputmode="numeric" placeholder="e.g., -110" autocomplete="off" autocorrect="off" spellcheck="false">
             <span class="icon" aria-hidden="true"></span>
           </div>
         </div>
         <div>
           <label class="small muted">&nbsp;</label>
-          <button id="flipB" class="toggle" type="button">±</button>
+          <button id="flipB" type="button">±</button>
         </div>
       </div>
-      <div class="result-line"><div>Total Implied (A+B)</div><div id="sumImpl">—</div></div>
-      <div class="result-line"><div>Juice / Overround</div><div id="juicePct">—</div></div>
-      <div class="result-line"><div>No-Vig Prob A / B</div><div id="nvProbs">—</div></div>
-      <div class="result-line"><div>No-Vig Odds A / B</div><div id="nvOdds">—</div></div>
+      <div class="result"><div>Total Implied (A+B)</div><div id="sumImpl">—</div></div>
+      <div class="result"><div>Juice / Overround</div><div id="juicePct">—</div></div>
+      <div class="result"><div>No-Vig Prob A / B</div><div id="nvProbs">—</div></div>
+      <div class="result"><div>No-Vig Odds A / B</div><div id="nvOdds">—</div></div>
     </section>
 
-    <footer class="small muted" style="text-align:center;padding:6px 0 12px">Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Seasmoke</footer>
+    <footer class="small muted" style="text-align:center;padding:6px 0 12px">
+      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Seasmoke
+    </footer>
   </div>
 
 <script>
-// ---------- Math ----------
+// Math helpers
 const americanToProb = (o) => (!Number.isFinite(o) || o===0) ? NaN : (o>0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
 const probToAmerican = (p) => (!(p>0 && p<1)) ? NaN : (p>0.5 ? -Math.round(100*p/(1-p)) : Math.round(100*(1-p)/p));
 const stakeForWin = (o, want) => (!Number.isFinite(o)||!Number.isFinite(want)||o===0) ? NaN : (o>0 ? (want*100)/o : (want*Math.abs(o))/100);
 
-// ---------- DOM + formatting ----------
-const $ = (id) => document.getElementById(id);
+// DOM helpers
+const $ = (id)=>document.getElementById(id);
 const USD = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtUSD = (n) => isNaN(n) ? "—" : USD.format(n);
-const fmtPct = (p) => isNaN(p) ? "—" : (p*100).toFixed(2) + "%";
-const fmtOdds = (o) => isNaN(o) ? "—" : (o>0?"+":"") + String(o);
+const fmtUSD = (n)=> isNaN(n) ? "—" : USD.format(n);
+const fmtPct = (p)=> isNaN(p) ? "—" : (p*100).toFixed(2) + "%";
+const fmtOdds = (o)=> isNaN(o) ? "—" : (o>0?"+":"") + String(o);
+const mark = (el, ok)=>{ el.classList.remove("valid","invalid"); el.classList.add(ok?"valid":"invalid"); };
 
-const markValidity = (el, ok, helpEl=null, okText="", errText="") => {
-  el.classList.remove("valid","invalid");
-  el.classList.add(ok ? "valid" : "invalid");
-  if (helpEl && (okText || errText)) helpEl.textContent = ok ? okText : errText;
-};
-
-// ---------- Odds ----------
-function sanitizeOddsWhileTyping(el){
+// Odds input
+function sanitizeOdds(el){
   const v = el.value || "";
-  const m = v.match(/^[\+\-]?\d*/);
-  const keep = m ? m[0] : "";
-  if (v !== keep){
-    const pos = Math.min(keep.length, v.length);
-    el.value = keep;
-    try{ el.setSelectionRange(pos, pos); }catch{}
-  }
+  const m = v.match(/^[\\+\\-]?\\d+/);
+  if (!m){ el.value = v.replace(/[^\\d\\+\\-]/g,""); return NaN; }
+  el.value = m[0]; return Number(m[0]);
 }
-function readOdds(el){
-  const t = (el.value||"").trim();
-  if (!/^[+-]?\d+$/.test(t)) return NaN;
-  return Number(t);
-}
-const isValidOdds = (n) => Number.isFinite(n) && Math.abs(n) >= 100;
+const isValidOdds = (n)=> Number.isFinite(n) && Math.abs(n) >= 100;
 
-// ---------- Money mask (iPhone-friendly) ----------
-function digitsToUSD(d){
-  const cents = d ? parseInt(d,10) : 0;
-  return USD.format((isNaN(cents)?0:cents)/100);
+// Money input
+function applyMoneyMask(el){
+  const raw = (el.value.match(/\\d+/g)||[]).join("");
+  el.dataset.digits = raw;
+  const cents = raw===""?0:parseInt(raw,10);
+  el.value = USD.format((isNaN(cents)?0:cents)/100);
+  return raw!=="" && parseInt(raw,10)>0;
 }
-function attachMoneyMask(el, onChange){
-  if (!el.dataset.digits) el.dataset.digits = "";
-  el.value = digitsToUSD(el.dataset.digits);
-  el.addEventListener("input", ()=>{
-    const raw = (el.value.match(/\d+/g)||[]).join("");
-    el.dataset.digits = raw;
-    el.value = digitsToUSD(raw);
-    onChange && onChange();
-  });
-  el.addEventListener("paste", (e)=>{
-    e.preventDefault();
-    const pasted = (e.clipboardData?.getData("text")||"").replace(/\D/g,"");
-    el.dataset.digits = ((el.dataset.digits||"") + pasted).replace(/^0+(?=\d)/,"");
-    el.value = digitsToUSD(el.dataset.digits);
-    onChange && onChange();
-  });
-  el.addEventListener("focus", ()=>{
-    requestAnimationFrame(()=>{ try{ el.setSelectionRange(el.value.length, el.value.length);}catch{} });
-  });
-}
-const parseMoney = (el) => {
-  const d = el.dataset.digits || "";
-  if (d === "") return 0;
-  const cents = parseInt(d,10);
-  return Number.isFinite(cents) ? cents/100 : NaN;
-};
+const readMoney = (el)=>{ const d=el.dataset.digits||""; return d===""?0:parseInt(d,10)/100; };
 
-// ---------- Calculations ----------
-function calculateStake(){
-  const oddsEl = $("odds");
-  const help = $("oddsHelp");
-  const winEl = $("win");
-  const o = readOdds(oddsEl);
-  const w = parseMoney(winEl);
+// Stake calc
+function calcStake(){
+  const o = sanitizeOdds($("odds"));
+  const winOk = applyMoneyMask($("win"));
   const okOdds = isValidOdds(o);
-  const okWin = (winEl.dataset.digits||"") !== "" && parseInt(winEl.dataset.digits,10) > 0;
-  markValidity(oddsEl, okOdds, help, "Tap ± to flip sign if needed.", "Use |odds| ≥ 100 (e.g. -110, +120).");
-  markValidity(winEl, okWin, $("winHelp"), "Looks good.", "Enter an amount > $0.00.");
-  if (!okOdds || !okWin){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
-  $("stakeOut").textContent = fmtUSD(stakeForWin(o, w));
+  mark($("odds"), okOdds); mark($("win"), winOk);
+  if (!okOdds || !winOk){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
+  $("stakeOut").textContent = fmtUSD(stakeForWin(o, readMoney($("win"))));
   $("breakeven1").textContent = fmtPct(americanToProb(o));
+  $("sideA").value = $("odds").value; calcJuice();
 }
 
-function calculateJuice(){
-  const sideAEl = $("sideA"), sideBEl = $("sideB");
-  const a = readOdds(sideAEl), b = readOdds(sideBEl);
-  const aOk = isValidOdds(a), bOk = isValidOdds(b);
-  markValidity(sideAEl, aOk); markValidity(sideBEl, bOk);
-  if (!aOk || !bOk){ $("sumImpl").textContent = $("juicePct").textContent = $("nvProbs").textContent = $("nvOdds").textContent = "—"; return; }
-  const pA = americanToProb(a), pB = americanToProb(b);
-  const sum = pA + pB, juice = sum - 1;
-  $("sumImpl").textContent = fmtPct(sum);
-  $("juicePct").textContent = fmtPct(juice);
-  if (sum>0){
-    const nvA = pA/sum, nvB = pB/sum;
-    $("nvProbs").textContent = fmtPct(nvA) + " / " + fmtPct(nvB);
-    $("nvOdds").textContent = fmtOdds(probToAmerican(nvA)) + " / " + fmtOdds(probToAmerican(nvB));
-  } else {
-    $("nvProbs").textContent = "—"; $("nvOdds").textContent = "—";
-  }
+// Juice calc
+function calcJuice(){
+  const a = sanitizeOdds($("sideA")), b = sanitizeOdds($("sideB"));
+  const aOk=isValidOdds(a), bOk=isValidOdds(b);
+  mark($("sideA"), aOk); mark($("sideB"), bOk);
+  if(!aOk||!bOk){$("sumImpl").textContent=$("juicePct").textContent=$("nvProbs").textContent=$("nvOdds").textContent="—";return;}
+  const pA=americanToProb(a), pB=americanToProb(b), sum=pA+pB, juice=sum-1;
+  $("sumImpl").textContent=fmtPct(sum); $("juicePct").textContent=fmtPct(juice);
+  if(sum>0){const nvA=pA/sum, nvB=pB/sum; $("nvProbs").textContent=fmtPct(nvA)+" / "+fmtPct(nvB); $("nvOdds").textContent=fmtOdds(probToAmerican(nvA))+" / "+fmtOdds(probToAmerican(nvB));}
+  else{$("nvProbs").textContent=$("nvOdds").textContent="—";}
 }
 
-// ---------- Wiring ----------
-function bind(){
-  attachMoneyMask($("win"), calculateStake);
-  ["odds","sideA","sideB"].forEach(id=>{
-    const el=$(id);
-    el.addEventListener("input",()=>{
-      sanitizeOddsWhileTyping(el);
-      if(id==="odds"){ $("sideA").value = el.value; }
-      calculateStake(); calculateJuice();
-    });
-  });
-  $("toggleBtn").addEventListener("click", ()=>{
-    const el=$("odds"); if(!el.value) return;
-    el.value = el.value.startsWith("-") ? el.value.slice(1) : (el.value.startsWith("+")? "-"+el.value.slice(1) : "-"+el.value);
-    el.dispatchEvent(new Event("input",{bubbles:true}));
-  });
-  $("flipA").addEventListener("click", ()=>{
-    const el=$("sideA"); if(!el.value) return;
-    el.value = el.value.startsWith("-") ? el.value.slice(1) : (el.value.startsWith("+")? "-"+el.value.slice(1) : "-"+el.value);
-    el.dispatchEvent(new Event("input",{bubbles:true}));
-  });
-  $("flipB").addEventListener("click", ()=>{
-    const el=$("sideB"); if(!el.value) return;
-    el.value = el.value.startsWith("-") ? el.value.slice(1) : (el.value.startsWith("+")? "-"+el.value.slice(1) : "-"+el.value);
-    el.dispatchEvent(new Event("input",{bubbles:true}));
-  });
-  // init
-  $("win").dataset.digits = "";
-  $("win").value = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(0);
-  calculateStake();
-  $("sideA").value = $("odds").value;
-  calculateJuice();
-}
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bind); else bind();
-</script>
-
-<script>
-// bump cache to avoid stale
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js")
-    .then(()=>{ if (navigator.serviceWorker.controller) { navigator.serviceWorker.controller.postMessage("bust"); } })
-    .catch(()=>{});
-}
+// Wiring
+["odds","win"].forEach(id=>$(id).addEventListener("input",calcStake));
+["sideA","sideB"].forEach(id=>$(id).addEventListener("input",calcJuice));
+$("toggleOdds").addEventListener("click",()=>{const el=$("odds");if(!el.value)return;el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value);calcStake();});
+$("flipA").addEventListener("click",()=>{const el=$("sideA");if(!el.value)return;el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value);calcJuice();});
+$("flipB").addEventListener("click",()=>{const el=$("sideB");if(!el.value)return;el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value);calcJuice();});
+document.addEventListener("DOMContentLoaded",()=>{$("win").value="$0.00";$("win").dataset.digits="";});
 </script>
 </body>
 </html>
