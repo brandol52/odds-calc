@@ -15,30 +15,28 @@
     label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
     .field{position:relative}
     input[type=text]{width:100%;background:#0b1324;border:1px solid var(--border);border-radius:10px;color:var(--fg);
-      padding:10px 34px 10px 12px;font-size:16px;outline:none}
+      padding:10px 40px 10px 12px;font-size:16px;outline:none}
     input[type=text]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
     .valid{border-color:var(--ok)}.invalid{border-color:var(--bad)}
 
-    /* Force bold green/red check & X */
-    .icon {
-      position:absolute;
-      right:10px;
-      top:50%;
-      transform:translateY(-50%);
-      font-size:18px;
-      font-weight:bold;
-      line-height:1;
-      pointer-events:none;
+    /* Force bold green/red icons via inline SVG (iOS-proof, no tint) */
+    .icon{
+      position:absolute; right:10px; top:50%; transform:translateY(-50%);
+      width:20px; height:20px; pointer-events:none; background-repeat:no-repeat; background-size:20px 20px;
     }
-    .field input.valid ~ .icon::after {
-      content: "✔";
-      color: #22c55e !important;
-      font-weight: bold;
+    /* check (green) */
+    .field input.valid ~ .icon{
+      background-image:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path d='M20.285 6.709a1.2 1.2 0 0 1 0 1.697l-9.6 9.6a1.2 1.2 0 0 1-1.697 0l-5.273-5.273a1.2 1.2 0 1 1 1.697-1.697l4.424 4.424 8.751-8.751a1.2 1.2 0 0 1 1.697 0z' fill='%2322c55e'/>\
+</svg>");
     }
-    .field input.invalid ~ .icon::after {
-      content: "✖";
-      color: #ef4444 !important;
-      font-weight: bold;
+    /* X (red) */
+    .field input.invalid ~ .icon{
+      background-image:url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'>\
+<path d='M7.05 6.343a1.2 1.2 0 0 0-1.697 1.697L10.303 13l-4.95 4.96a1.2 1.2 0 1 0 1.697 1.697L12 14.697l4.95 4.96a1.2 1.2 0 1 0 1.697-1.697L13.697 13l4.95-4.96A1.2 1.2 0 0 0 16.95 6.343L12 11.303 7.05 6.343z' fill='%23ef4444'/>\
+</svg>");
     }
 
     button{border:1px solid var(--border);background:#0b1324;color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
@@ -120,7 +118,7 @@
     </section>
 
     <footer class="small muted" style="text-align:center;padding:6px 0 12px">
-      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Seasmoke
+      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Caraxes
     </footer>
   </div>
 
