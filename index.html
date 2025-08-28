@@ -18,9 +18,9 @@
       padding:10px 34px 10px 12px;font-size:16px;outline:none}
     input[type=text]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
     .valid{border-color:var(--ok)}.invalid{border-color:var(--bad)}
-    .icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px;line-height:1;pointer-events:none}
-    .field input.valid ~ .icon{color:var(--ok)} .field input.valid ~ .icon::after{content:"✔"}
-    .field input.invalid ~ .icon{color:var(--bad)} .field input.invalid ~ .icon::after{content:"✖"}
+    .icon{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:18px;font-weight:bold;line-height:1;pointer-events:none}
+    .field input.valid ~ .icon{color:var(--ok)} .field input.valid ~ .icon::after{content:"✔"; color:var(--ok); font-weight:bold;}
+    .field input.invalid ~ .icon{color:var(--bad)} .field input.invalid ~ .icon::after{content:"✖"; color:var(--bad); font-weight:bold;}
     button{border:1px solid var(--border);background:#0b1324;color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
     .result{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border:1px solid var(--border);border-radius:10px;font-variant-numeric:tabular-nums}
   </style>
@@ -32,6 +32,7 @@
       <div class="muted small">Stable build — stake/win & juice.</div>
     </header>
 
+    <!-- Stake → Win -->
     <section class="card">
       <h2 class="muted" style="margin:0;font-size:14px">Stake → Win</h2>
       <div class="row">
@@ -62,6 +63,7 @@
       <div class="result"><div>Break-even (Implied)</div><div id="breakeven1">—</div></div>
     </section>
 
+    <!-- Juice -->
     <section class="card">
       <h2 class="muted" style="margin:0;font-size:14px">Juice / Overround</h2>
       <div class="row">
@@ -104,58 +106,57 @@
 
 <script>
 // Math helpers
-const americanToProb = (o) => (!Number.isFinite(o) || o===0) ? NaN : (o>0 ? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
-const probToAmerican = (p) => (!(p>0 && p<1)) ? NaN : (p>0.5 ? -Math.round(100*p/(1-p)) : Math.round(100*(1-p)/p));
-const stakeForWin = (o, want) => (!Number.isFinite(o)||!Number.isFinite(want)||o===0) ? NaN : (o>0 ? (want*100)/o : (want*Math.abs(o))/100);
+const americanToProb=(o)=>(!Number.isFinite(o)||o===0)?NaN:(o>0?100/(o+100):Math.abs(o)/(Math.abs(o)+100));
+const probToAmerican=(p)=>(!(p>0&&p<1))?NaN:(p>0.5?-Math.round(100*p/(1-p)):Math.round(100*(1-p)/p));
+const stakeForWin=(o,w)=>(!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN:(o>0?(w*100)/o:(w*Math.abs(o))/100);
 
 // DOM helpers
-const $ = (id)=>document.getElementById(id);
-const USD = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtUSD = (n)=> isNaN(n) ? "—" : USD.format(n);
-const fmtPct = (p)=> isNaN(p) ? "—" : (p*100).toFixed(2) + "%";
-const fmtOdds = (o)=> isNaN(o) ? "—" : (o>0?"+":"") + String(o);
-const mark = (el, ok)=>{ el.classList.remove("valid","invalid"); el.classList.add(ok?"valid":"invalid"); };
+const $=(id)=>document.getElementById(id);
+const USD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtUSD=(n)=>isNaN(n)?"—":USD.format(n);
+const fmtPct=(p)=>isNaN(p)?"—":(p*100).toFixed(2)+"%";
+const fmtOdds=(o)=>isNaN(o)?"—":(o>0?"+":"")+String(o);
+const mark=(el,ok)=>{el.classList.remove("valid","invalid");el.classList.add(ok?"valid":"invalid");};
 
-// Odds input
+// Odds sanitize
 function sanitizeOdds(el){
-  const v = el.value || "";
-  const m = v.match(/^[\\+\\-]?\\d+/);
-  if (!m){ el.value = v.replace(/[^\\d\\+\\-]/g,""); return NaN; }
-  el.value = m[0]; return Number(m[0]);
+  const v=el.value||"";const m=v.match(/^[\\+\\-]?\\d+/);
+  if(!m){el.value=v.replace(/[^\\d\\+\\-]/g,"");return NaN;}
+  el.value=m[0];return Number(m[0]);
 }
-const isValidOdds = (n)=> Number.isFinite(n) && Math.abs(n) >= 100;
+const isValidOdds=(n)=>Number.isFinite(n)&&Math.abs(n)>=100;
 
-// Money input
+// Money mask
 function applyMoneyMask(el){
-  const raw = (el.value.match(/\\d+/g)||[]).join("");
-  el.dataset.digits = raw;
-  const cents = raw===""?0:parseInt(raw,10);
-  el.value = USD.format((isNaN(cents)?0:cents)/100);
-  return raw!=="" && parseInt(raw,10)>0;
+  const raw=(el.value.match(/\\d+/g)||[]).join("");
+  el.dataset.digits=raw;
+  const cents=raw===""?0:parseInt(raw,10);
+  el.value=USD.format((isNaN(cents)?0:cents)/100);
+  return raw!==""&&parseInt(raw,10)>0;
 }
-const readMoney = (el)=>{ const d=el.dataset.digits||""; return d===""?0:parseInt(d,10)/100; };
+const readMoney=(el)=>{const d=el.dataset.digits||"";return d===""?0:parseInt(d,10)/100;};
 
 // Stake calc
 function calcStake(){
-  const o = sanitizeOdds($("odds"));
-  const winOk = applyMoneyMask($("win"));
-  const okOdds = isValidOdds(o);
-  mark($("odds"), okOdds); mark($("win"), winOk);
-  if (!okOdds || !winOk){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
-  $("stakeOut").textContent = fmtUSD(stakeForWin(o, readMoney($("win"))));
-  $("breakeven1").textContent = fmtPct(americanToProb(o));
-  $("sideA").value = $("odds").value; calcJuice();
+  const o=sanitizeOdds($("odds"));
+  const winOk=applyMoneyMask($("win"));
+  const okOdds=isValidOdds(o);
+  mark($("odds"),okOdds);mark($("win"),winOk);
+  if(!okOdds||!winOk){$("stakeOut").textContent="—";$("breakeven1").textContent="—";return;}
+  $("stakeOut").textContent=fmtUSD(stakeForWin(o,readMoney($("win"))));
+  $("breakeven1").textContent=fmtPct(americanToProb(o));
+  $("sideA").value=$("odds").value;calcJuice();
 }
 
 // Juice calc
 function calcJuice(){
-  const a = sanitizeOdds($("sideA")), b = sanitizeOdds($("sideB"));
-  const aOk=isValidOdds(a), bOk=isValidOdds(b);
-  mark($("sideA"), aOk); mark($("sideB"), bOk);
+  const a=sanitizeOdds($("sideA")),b=sanitizeOdds($("sideB"));
+  const aOk=isValidOdds(a),bOk=isValidOdds(b);
+  mark($("sideA"),aOk);mark($("sideB"),bOk);
   if(!aOk||!bOk){$("sumImpl").textContent=$("juicePct").textContent=$("nvProbs").textContent=$("nvOdds").textContent="—";return;}
-  const pA=americanToProb(a), pB=americanToProb(b), sum=pA+pB, juice=sum-1;
-  $("sumImpl").textContent=fmtPct(sum); $("juicePct").textContent=fmtPct(juice);
-  if(sum>0){const nvA=pA/sum, nvB=pB/sum; $("nvProbs").textContent=fmtPct(nvA)+" / "+fmtPct(nvB); $("nvOdds").textContent=fmtOdds(probToAmerican(nvA))+" / "+fmtOdds(probToAmerican(nvB));}
+  const pA=americanToProb(a),pB=americanToProb(b),sum=pA+pB,juice=sum-1;
+  $("sumImpl").textContent=fmtPct(sum);$("juicePct").textContent=fmtPct(juice);
+  if(sum>0){const nvA=pA/sum,nvB=pB/sum;$("nvProbs").textContent=fmtPct(nvA)+" / "+fmtPct(nvB);$("nvOdds").textContent=fmtOdds(probToAmerican(nvA))+" / "+fmtOdds(probToAmerican(nvB));}
   else{$("nvProbs").textContent=$("nvOdds").textContent="—";}
 }
 
