@@ -28,12 +28,7 @@
     .field input.invalid ~ .icon{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7.05 6.343a1.2 1.2 0 0 0-1.697 1.697L10.303 13l-4.95 4.96a1.2 1.2 0 1 0 1.697 1.697L12 14.697l4.95 4.96a1.2 1.2 0 1 0 1.697-1.697L13.697 13l4.95-4.96A1.2 1.2 0 0 0 16.95 6.343L12 11.303 7.05 6.343z' fill='%23ef4444'/></svg>");}
     button{border:1px solid var(--border);background:#0b1324;color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
     .result{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border:1px solid var(--border);border-radius:10px;font-variant-numeric:tabular-nums}
-  
-  .be-status{margin-top:6px;font-weight:700;font-size:14px}
-  .be-status.good{color:#16a34a}
-  .be-status.warn{color:#ca8a04}
-  .be-status.bad{color:#dc2626}
-</style>
+  </style>
 </head>
 <body>
   <div class="wrap">
@@ -69,7 +64,6 @@
       </div>
       <div class="result"><div>Stake Required</div><div id="stakeOut">—</div></div>
       <div class="result"><div>Break-even (Implied)</div><div id="breakeven1">—</div></div>
-      <div id="beStatus" class="be-status"> </div>
     </section>
 
     <!-- Juice -->
@@ -121,27 +115,6 @@ const USD = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minim
 const fmtUSD = n => isNaN(n) ? "—" : USD.format(n);
 const fmtPct = p => isNaN(p) ? "—" : (p*100).toFixed(2)+"%";
 const fmtOdds = o => isNaN(o) ? "—" : (o>0?"+":"")+String(o);
-function updateBeStatus(p){
-  const el=document.getElementById("beStatus");
-  if(!el){return;}
-  el.classList.remove("good","warn","bad");
-  if(!(p>=0)){ el.textContent=""; return; }
-  if(p>=0.50){ el.textContent="Favorite (Implied)"; el.classList.add("good"); }
-  else if(p>=0.35 && p<0.50){ el.textContent="Toss-Up / Underdog (Implied)"; el.classList.add("warn"); }
-  else { el.textContent="Longshot (Implied)"; el.classList.add("bad"); }
-}
-  el.classList.remove("good","warn","bad");
-  if(!(p>=0)){ el.textContent=""; return; }
-  if(p>=0.50){ el.textContent="Likely Hit"; el.classList.add("good"); }
-  else if(p>=0.35 && p<0.50){ el.textContent="Risky Play"; el.classList.add("warn"); }
-  else { el.textContent="Longshot"; el.classList.add("bad"); }
-}
-  el.classList.remove("good","warn","bad");
-  if(!(p>0)){ el.textContent=""; return; }
-  if(p>0.50){ el.textContent="Likely Hit"; el.classList.add("good"); }
-  else if(p>=0.35 && p<=0.49){ el.textContent="Risky Play"; el.classList.add("warn"); }
-  else { el.textContent="Longshot"; el.classList.add("bad"); }
-}
 const mark = (el,ok)=>{ el.classList.remove("valid","invalid"); el.classList.add(ok?"valid":"invalid"); };
 
 function readOdds(el){ const t=(el.value||"").trim(); if(!/^[+-]?\d+$/.test(t)) return NaN; return Number(t); }
@@ -163,7 +136,6 @@ function calcStake(){
   if(!okOdds||!okWin){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
   $("stakeOut").textContent=fmtUSD(stakeForWin(o, readMoney(winEl)));
   $("breakeven1").textContent=fmtPct(americanToProb(o));
-  updateBeStatus(americanToProb(o));
   $("sideA").value=oddsEl.value; calcJuice();
 }
 
