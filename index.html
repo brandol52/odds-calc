@@ -91,7 +91,7 @@
     </section>
 
     <footer class="small muted" style="text-align:center;padding:6px 0 12px">
-      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Syrax 🔥🐉
+      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Syrax 🐉🔥
     </footer>
   </div>
 
@@ -103,12 +103,17 @@ const fmtPct = p => isNaN(p) ? "—" : (p*100).toFixed(2)+"%";
 const fmtOdds = o => isNaN(o) ? "—" : (o>0?"+":"")+String(o);
 const mark = (el,ok)=>{ el.classList.remove("valid","invalid"); el.classList.add(ok?"valid":"invalid"); };
 
-function maskMoney(el){
+// Money input: allow digits while typing, format only on blur
+function handleMoneyInput(el){
   const digits=(el.value.match(/\\d+/g)||[]).join("");
   el.dataset.digits=digits;
-  const cents=digits===""?0:parseInt(digits,10);
-  el.value=USD.format((isNaN(cents)?0:cents)/100);
   return digits!==""&&parseInt(digits,10)>0;
+}
+function handleMoneyBlur(el){
+  const digits=el.dataset.digits||"";
+  if(digits===""){ el.value=""; return; }
+  const cents=parseInt(digits,10);
+  el.value=USD.format(cents/100);
 }
 const readMoney = el => { const d=el.dataset.digits||""; return d===""?0:parseInt(d,10)/100; };
 
@@ -119,7 +124,7 @@ function stakeForWin(o,w){ return (!Number.isFinite(o)||!Number.isFinite(w)||o==
 
 function calcStake(){
   const oddsEl=$("odds"), winEl=$("win");
-  const o=readOdds(oddsEl), okOdds=isValidOdds(o), okWin=maskMoney(winEl);
+  const o=readOdds(oddsEl), okOdds=isValidOdds(o), okWin=handleMoneyInput(winEl);
   mark(oddsEl,okOdds); mark(winEl,okWin);
   if(!okOdds||!okWin){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
   $("stakeOut").textContent=fmtUSD(stakeForWin(o, readMoney(winEl)));
@@ -128,22 +133,22 @@ function calcStake(){
 
 function calcRequiredOdds(){
   const sEl=$("stake2"), wEl=$("win2");
-  const okStake=maskMoney(sEl), okWin=maskMoney(wEl);
+  const okStake=handleMoneyInput(sEl), okWin=handleMoneyInput(wEl);
   mark(sEl,okStake); mark(wEl,okWin);
   if(!okStake||!okWin){ $("reqOddsOut").textContent="—"; return; }
   const stake=readMoney(sEl), win=readMoney(wEl);
   if(stake<=0||win<=0){ $("reqOddsOut").textContent="—"; return; }
   let odds;
-  if (win >= stake){
-    odds = Math.round((win/stake) * 100);
-  } else {
-    odds = -Math.round((stake/win) * 100);
-  }
+  if(win>=stake){ odds=Math.round((win/stake)*100); } else { odds=-Math.round((stake/win)*100); }
   $("reqOddsOut").textContent=fmtOdds(odds);
 }
 
 ["odds","win"].forEach(id=>$(id).addEventListener("input", calcStake));
 ["stake2","win2"].forEach(id=>$(id).addEventListener("input", calcRequiredOdds));
+
+["win","stake2","win2"].forEach(id=>{
+  $(id).addEventListener("blur", e=>handleMoneyBlur(e.target));
+});
 
 $("toggleOdds").addEventListener("click", ()=>{
   const el=$("odds"); if(!el.value) return;
