@@ -3,8 +3,8 @@
   "short_name": "Odds Calc",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#4b0015",
-  "theme_color": "#0c111b",
+  "background_color": "#5A1414",
+  "theme_color": "#5A1414",
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -15,11 +15,6 @@
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
-    },
-    {
-      "src": "icons/favicon.ico",
-      "sizes": "48x48 32x32 16x16",
-      "type": "image/x-icon"
     }
   ]
 }
