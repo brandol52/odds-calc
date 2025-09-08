@@ -91,7 +91,7 @@
     </section>
 
     <footer class="small muted" style="text-align:center;padding:6px 0 12px">
-      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Syrax 🐉🔥
+      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Syrax 🔥🐉🔥
     </footer>
   </div>
 
@@ -103,37 +103,41 @@ const fmtPct = p => isNaN(p) ? "—" : (p*100).toFixed(2)+"%";
 const fmtOdds = o => isNaN(o) ? "—" : (o>0?"+":"")+String(o);
 const mark = (el,ok)=>{ el.classList.remove("valid","invalid"); el.classList.add(ok?"valid":"invalid"); };
 
-// Money input: allow digits while typing, format only on blur
-function handleMoneyInput(el){
-  const digits=(el.value.match(/\\d+/g)||[]).join("");
-  el.dataset.digits=digits;
-  return digits!==""&&parseInt(digits,10)>0;
+// Floating decimal money mask
+function moneyMaskInput(el){
+  // keep only digits
+  let digits = (el.value.match(/\d+/g)||[]).join("");
+  if(digits===""){ el.dataset.cents=""; el.value=""; return false; }
+  el.dataset.cents = digits;
+  let cents = parseInt(digits,10);
+  el.value = USD.format(cents/100);
+  return cents>0;
 }
-function handleMoneyBlur(el){
-  const digits=el.dataset.digits||"";
-  if(digits===""){ el.value=""; return; }
-  const cents=parseInt(digits,10);
-  el.value=USD.format(cents/100);
-}
-const readMoney = el => { const d=el.dataset.digits||""; return d===""?0:parseInt(d,10)/100; };
+const readMoney = el => {
+  const d=el.dataset.cents||"";
+  return d===""?0:parseInt(d,10)/100;
+};
 
-function readOdds(el){ const t=(el.value||"").trim(); if(!/^[+-]?\\d+$/.test(t)) return NaN; return Number(t); }
+// --- Odds helpers ---
+function readOdds(el){ const t=(el.value||"").trim(); if(!/^[+-]?\d+$/.test(t)) return NaN; return Number(t); }
 const isValidOdds = n => Number.isFinite(n) && Math.abs(n) >= 100;
 function americanToProb(o){ return (!Number.isFinite(o)||o===0)?NaN:(o>0?100/(o+100):Math.abs(o)/(Math.abs(o)+100)); }
 function stakeForWin(o,w){ return (!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN:(o>0?(w*100)/o:(w*Math.abs(o))/100); }
 
+// Stake → Win
 function calcStake(){
   const oddsEl=$("odds"), winEl=$("win");
-  const o=readOdds(oddsEl), okOdds=isValidOdds(o), okWin=handleMoneyInput(winEl);
+  const o=readOdds(oddsEl), okOdds=isValidOdds(o), okWin=moneyMaskInput(winEl);
   mark(oddsEl,okOdds); mark(winEl,okWin);
   if(!okOdds||!okWin){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
   $("stakeOut").textContent=fmtUSD(stakeForWin(o, readMoney(winEl)));
   $("breakeven1").textContent=fmtPct(americanToProb(o));
 }
 
+// Required Odds
 function calcRequiredOdds(){
   const sEl=$("stake2"), wEl=$("win2");
-  const okStake=handleMoneyInput(sEl), okWin=handleMoneyInput(wEl);
+  const okStake=moneyMaskInput(sEl), okWin=moneyMaskInput(wEl);
   mark(sEl,okStake); mark(wEl,okWin);
   if(!okStake||!okWin){ $("reqOddsOut").textContent="—"; return; }
   const stake=readMoney(sEl), win=readMoney(wEl);
@@ -143,12 +147,9 @@ function calcRequiredOdds(){
   $("reqOddsOut").textContent=fmtOdds(odds);
 }
 
+// --- Wire up ---
 ["odds","win"].forEach(id=>$(id).addEventListener("input", calcStake));
 ["stake2","win2"].forEach(id=>$(id).addEventListener("input", calcRequiredOdds));
-
-["win","stake2","win2"].forEach(id=>{
-  $(id).addEventListener("blur", e=>handleMoneyBlur(e.target));
-});
 
 $("toggleOdds").addEventListener("click", ()=>{
   const el=$("odds"); if(!el.value) return;
@@ -156,5 +157,6 @@ $("toggleOdds").addEventListener("click", ()=>{
   calcStake();
 });
 </script>
+
 </body>
 </html>
