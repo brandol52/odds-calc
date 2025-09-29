@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Odds Calc (Build-Syrax)</title>
+  <title>Odds Calc — Stake Chart (Syrax)</title>
   <meta name="theme-color" content="#5A1414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,160 +11,123 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/favicon.ico">
   <style>
-    :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537;--ok:#22c55e;--bad:#ef4444}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
     .wrap{max-width:560px;margin:0 auto;padding:12px;display:grid;row-gap:10px}
-    h1{margin:6px 0 2px;font-size:18px}.muted{color:var(--muted)}.small{font-size:12px}
+    h1{margin:6px 0 2px;font-size:18px}
+    .muted{color:var(--muted)} .small{font-size:12px}
+
     .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
-    .row{display:flex;gap:10px;align-items:center}.col{flex:1}
     label{display:block;margin-bottom:6px;color:var(--muted);font-size:13px}
     .field{position:relative}
     input[type=text]{width:100%;background:#0b1324;border:1px solid var(--border);border-radius:10px;color:var(--fg);
-      padding:10px 40px 10px 12px;font-size:16px;outline:none;-webkit-appearance:none}
+      padding:10px 12px;font-size:16px;outline:none;-webkit-appearance:none}
     input[type=text]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
-    .valid{border-color:var(--ok)}.invalid{border-color:var(--bad)}
-    .icon{position:absolute; right:10px; top:50%; transform:translateY(-50%); width:20px; height:20px; pointer-events:none; background-repeat:no-repeat; background-size:20px 20px;}
-    .field input.valid ~ .icon{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M20.285 6.709a1.2 1.2 0 0 1 0 1.697l-9.6 9.6a1.2 1.2 0 0 1-1.697 0l-5.273-5.273a1.2 1.2 0 1 1 1.697-1.697l4.424 4.424 8.751-8.751a1.2 1.2 0 0 1 1.697 0z' fill='%2322c55e'/></svg>");}
-    .field input.invalid ~ .icon{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7.05 6.343a1.2 1.2 0 0 0-1.697 1.697L10.303 13l-4.95 4.96a1.2 1.2 0 1 0 1.697 1.697L12 14.697l4.95 4.96a1.2 1.2 0 1 0 1.697-1.697L13.697 13l4.95-4.96A1.2 1.2 0 0 0 16.95 6.343L12 11.303 7.05 6.343z' fill='%23ef4444'/></svg>");}
-    button{border:1px solid var(--border);background:#0b1324;color:var(--fg);border-radius:10px;padding:10px 12px;font-size:14px}
-    .result{display:flex;justify-content:space-between;padding:8px 10px;background:#0c1428;border:1px solid var(--border);border-radius:10px;font-variant-numeric:tabular-nums}
+
+    /* Chart */
+    .chartCard{gap:8px}
+    .chartHeader{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+    .grid{
+      column-count:4;
+      column-gap:6px;
+    }
+    /* tighter on very small screens */
+    @media (max-width:390px){ .grid{ column-count:4; } }
+    @media (max-width:360px){ .grid{ column-count:5; } } /* add a column if super narrow to keep height down */
+
+    .cell{
+      break-inside:avoid; /* keep boxes intact across columns */
+      display:flex;justify-content:space-between;align-items:center;
+      padding:6px 8px;margin:0 0 6px 0;border:1px solid var(--border);border-radius:8px;
+      background:#0c1428;font-variant-numeric:tabular-nums;font-size:11px;line-height:1.1;
+    }
+    .odds{opacity:.85}
+    .amt{font-weight:600}
+    footer{font-size:12px;color:var(--muted);text-align:center;padding:4px 0 10px}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>Odds Calc</h1>
-      <div class="muted small">Stake/Win & Juice — <strong>Build-Syrax</strong></div>
+      <h1>Stake Chart</h1>
+      <div class="muted small">Enter desired win → see stake for –500…–105 (×5)</div>
     </header>
 
-    <!-- Stake → Win -->
     <section class="card">
-      <h2 class="muted" style="margin:0;font-size:14px">Stake → Win</h2>
-      <div class="row">
-        <div class="col">
-          <label for="odds">American Odds</label>
-          <div class="field">
-            <input id="odds" type="text" inputmode="numeric" placeholder="+150 or -120" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="6">
-            <span class="icon" aria-hidden="true"></span>
-          </div>
-        </div>
-        <div>
-          <label class="small muted">&nbsp;</label>
-          <button id="toggleOdds" type="button">±</button>
-        </div>
+      <label for="win">Desired Win ($)</label>
+      <div class="field">
+        <input id="win" type="text" inputmode="numeric" placeholder="$0.00" autocomplete="off" autocorrect="off" spellcheck="false">
       </div>
-      <div class="row">
-        <div class="col">
-          <label for="win">Target Win ($)</label>
-          <div class="field">
-            <input id="win" type="text" inputmode="numeric" placeholder="$0.00" autocomplete="off" autocorrect="off" spellcheck="false">
-            <span class="icon" aria-hidden="true"></span>
-          </div>
-        </div>
-      </div>
-      <div class="result"><div>Stake Required</div><div id="stakeOut">—</div></div>
-      <div class="result"><div>Break-even (Implied)</div><div id="breakeven1">—</div></div>
     </section>
 
-    <!-- Juice -->
-    <section class="card">
-      <h2 class="muted" style="margin:0;font-size:14px">Juice / Overround</h2>
-      <div class="row">
-        <div class="col">
-          <label for="sideA">Side A Odds</label>
-          <div class="field">
-            <input id="sideA" type="text" inputmode="numeric" placeholder="-110" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="6">
-            <span class="icon" aria-hidden="true"></span>
-          </div>
-        </div>
-        <div>
-          <label class="small muted">&nbsp;</label>
-          <button id="flipA" type="button">±</button>
-        </div>
+    <section class="card chartCard">
+      <div class="chartHeader">
+        <div>American Odds</div>
+        <div>Stake Required</div>
       </div>
-      <div class="row">
-        <div class="col">
-          <label for="sideB">Side B Odds</label>
-          <div class="field">
-            <input id="sideB" type="text" inputmode="numeric" placeholder="e.g., -110" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="6">
-            <span class="icon" aria-hidden="true"></span>
-          </div>
-        </div>
-        <div>
-          <label class="small muted">&nbsp;</label>
-          <button id="flipB" type="button">±</button>
-        </div>
-      </div>
-      <div class="result"><div>Total Implied (A+B)</div><div id="sumImpl">—</div></div>
-      <div class="result"><div>Juice / Overround</div><div id="juicePct">—</div></div>
-      <div class="result"><div>No-Vig Prob A / B</div><div id="nvProbs">—</div></div>
-      <div class="result"><div>No-Vig Odds A / B</div><div id="nvOdds">—</div></div>
+      <div id="grid" class="grid" aria-live="polite"></div>
     </section>
 
-    <footer class="small muted" style="text-align:center;padding:6px 0 12px">
-      Built by <strong>Bryan Randol (Pikkit: @Shakademus)</strong> • Build-Syrax
+    <footer>
+      Built by <strong>Bryan Randol</strong> • Build-Syrax
     </footer>
   </div>
 
 <script>
-const americanToProb = (o)=> (!Number.isFinite(o)||o===0)?NaN : (o>0? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
-const probToAmerican = (p)=> (!(p>0&&p<1))?NaN : (p>0.5? -Math.round(100*p/(1-p)) : Math.round(100*(1-p)/p));
-const stakeForWin = (o,w)=> (!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN : (o>0? (w*100)/o : (w*Math.abs(o))/100);
-const $ = id => document.getElementById(id);
 const USD = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtUSD = n => isNaN(n) ? "—" : USD.format(n);
-const fmtPct = p => isNaN(p) ? "—" : (p*100).toFixed(2)+"%";
-const fmtOdds = o => isNaN(o) ? "—" : (o>0?"+":"")+String(o);
-const mark = (el,ok)=>{ el.classList.remove("valid","invalid"); el.classList.add(ok?"valid":"invalid"); };
-
-function readOdds(el){ const t=(el.value||"").trim(); if(!/^[+-]?\d+$/.test(t)) return NaN; return Number(t); }
-const isValidOdds = n => Number.isFinite(n) && Math.abs(n) >= 100;
-
+const fmtUSD = n => USD.format(n);
+const readMoney = el => {
+  const digits=(el.value.match(/\d+/g)||[]).join("");
+  return digits===""?0:parseInt(digits,10)/100;
+};
 function maskMoney(el){
   const digits=(el.value.match(/\d+/g)||[]).join("");
-  el.dataset.digits=digits;
   const cents=digits===""?0:parseInt(digits,10);
   el.value=USD.format((isNaN(cents)?0:cents)/100);
-  return digits!==""&&parseInt(digits,10)>0;
 }
-const readMoney = el => { const d=el.dataset.digits||""; return d===""?0:parseInt(d,10)/100; };
-
-function calcStake(){
-  const oddsEl=$("odds"), winEl=$("win");
-  const o=readOdds(oddsEl), okOdds=isValidOdds(o), okWin=maskMoney(winEl);
-  mark(oddsEl,okOdds); mark(winEl,okWin);
-  if(!okOdds||!okWin){ $("stakeOut").textContent="—"; $("breakeven1").textContent="—"; return; }
-  $("stakeOut").textContent=fmtUSD(stakeForWin(o, readMoney(winEl)));
-  $("breakeven1").textContent=fmtPct(americanToProb(o));
-  $("sideA").value=oddsEl.value; calcJuice();
+function stakeForNegOdds(absNegOdds, win){
+  // For negative American odds (-X), stake = win * X / 100
+  return (win * absNegOdds) / 100;
 }
-
-function calcJuice(){
-  const aEl=$("sideA"), bEl=$("sideB");
-  const a=readOdds(aEl), b=readOdds(bEl);
-  const aOk=isValidOdds(a), bOk=isValidOdds(b);
-  mark(aEl,aOk); mark(bEl,bOk);
-  if(!aOk||!bOk){ $("sumImpl").textContent=$("juicePct").textContent=$("nvProbs").textContent=$("nvOdds").textContent="—"; return; }
-  const pA=americanToProb(a), pB=americanToProb(b);
-  const sum=pA+pB, juice=sum-1;
-  $("sumImpl").textContent=fmtPct(sum);
-  $("juicePct").textContent=fmtPct(juice);
-  if(sum>0){ const nvA=pA/sum, nvB=pB/sum; $("nvProbs").textContent=fmtPct(nvA)+" / "+fmtPct(nvB); $("nvOdds").textContent=fmtOdds(probToAmerican(nvA))+" / "+fmtOdds(probToAmerican(nvB)); }
-  else { $("nvProbs").textContent=$("nvOdds").textContent="—"; }
+function renderGrid(winAmt){
+  const grid=document.getElementById('grid');
+  grid.innerHTML="";
+  // –500 to –105 inclusive, step +5 (less negative)
+  for(let o= -500; o<= -105; o+=5){
+    const stake = stakeForNegOdds(Math.abs(o), winAmt);
+    const div=document.createElement('div');
+    div.className='cell';
+    const odds=document.createElement('div');
+    odds.className='odds';
+    odds.textContent = String(o);
+    const amt=document.createElement('div');
+    amt.className='amt';
+    amt.textContent = fmtUSD(stake);
+    div.appendChild(odds);
+    div.appendChild(amt);
+    grid.appendChild(div);
+  }
 }
 
 function init(){
-  ["odds","win"].forEach(id=>$(id).addEventListener("input", calcStake));
-  ["sideA","sideB"].forEach(id=>$(id).addEventListener("input", calcJuice));
-  $("toggleOdds").addEventListener("click", ()=>{ const el=$("odds"); if(!el.value) return; el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value); calcStake(); });
-  $("flipA").addEventListener("click", ()=>{ const el=$("sideA"); if(!el.value) return; el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value); calcJuice(); });
-  $("flipB").addEventListener("click", ()=>{ const el=$("sideB"); if(!el.value) return; el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value); calcJuice(); });
-  $("win").value="$0.00"; $("win").dataset.digits="";
-}
-if (document.readyState==="loading") document.addEventListener("DOMContentLoaded", init); else init();
-window.addEventListener("pageshow", e=>{ if(e.persisted) init(); }, {once:true});
+  const winEl=document.getElementById('win');
+  // Initialize
+  winEl.value="$0.00";
+  renderGrid(0);
 
-if ('serviceWorker' in navigator) { navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
+  winEl.addEventListener('input', ()=>{
+    maskMoney(winEl);
+    const w=readMoney(winEl);
+    renderGrid(w);
+  });
+
+  // PWA SW (no-op if missing)
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('service-worker.js').catch(()=>{});
+  }
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init); else init();
 </script>
 </body>
 </html>
