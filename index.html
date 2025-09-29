@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Odds Calc — Stake Window (Build-Tessarion)</title>
+  <title>Odds Calc — Stake Window (Build-Vhagar)</title>
   <meta name="theme-color" content="#5A1414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -19,7 +19,6 @@
     html,body{
       height:100%; width:100%; margin:0; background:var(--bg); color:var(--fg);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      overflow:hidden; /* keep single-screen layout */
     }
     .wrap{
       max-width:560px; width:100%; margin:0 auto;
@@ -46,26 +45,27 @@
     button{border:1px solid var(--border);background:var(--btn);color:var(--fg);border-radius:8px;padding:8px 10px;font-size:14px}
     .result{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;background:#0c1428;border:1px solid var(--border);border-radius:8px;font-variant-numeric:tabular-nums}
 
-    /* Window grid */
+    /* Window strip */
     .chartCard{gap:6px;padding:8px}
     .chartHeader{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);padding:0 2px}
     .subhead{font-size:11px;color:var(--muted);padding:0 2px;margin-top:-4px}
-    .grid{
-      column-count:12; column-gap:3px; height:100%; max-width:100%;
+
+    .scrollRow{
+      display:flex;flex-wrap:nowrap;overflow-x:auto;gap:6px;
+      -webkit-overflow-scrolling:touch;
+      padding-bottom:4px;
     }
-    @media (max-width:430px){ .grid{ column-count:12; } }
-    @media (max-width:400px){ .grid{ column-count:11; } }
-    @media (max-width:375px){ .grid{ column-count:10; } }
+    .scrollRow::-webkit-scrollbar{display:none} /* hide scrollbar for clean look */
 
     .cell{
-      break-inside:avoid;
-      display:flex;justify-content:space-between;align-items:center;
-      padding:4px 5px;margin:0 0 4px 0;border:1px solid var(--border);border-radius:6px;
-      background:#0c1428;font-variant-numeric:tabular-nums;line-height:1.05;
-      font-size:10.5px;min-height:18px;max-width:100%;overflow:hidden
+      flex:0 0 auto;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      padding:4px 6px;border:1px solid var(--border);border-radius:6px;
+      background:#0c1428;font-variant-numeric:tabular-nums;line-height:1.1;
+      font-size:11px;min-width:60px;
     }
-    .odds{color:var(--muted)}
-    .amt{font-weight:700;color:var(--ok);white-space:nowrap;text-overflow:ellipsis}
+    .odds{color:var(--muted);margin-bottom:2px}
+    .amt{font-weight:700;color:var(--ok);white-space:nowrap}
 
     footer{font-size:10.5px;color:var(--muted);text-align:center;padding:2px 0 4px}
   </style>
@@ -74,7 +74,7 @@
   <div class="wrap">
     <header>
       <h1>Stake Window</h1>
-      <div class="muted small">Build-Tessarion • Enter desired win + odds → stakes</div>
+      <div class="muted small">Build-Vhagar 🔥🐉 • Enter desired win + odds → stakes</div>
     </header>
 
     <!-- Inputs -->
@@ -103,125 +103,70 @@
       <div class="result"><div>Break-even (Implied)</div><div id="breakeven">—</div></div>
     </section>
 
-    <!-- Window (±100 points on same sign) -->
+    <!-- Window (±100 points) -->
     <section class="card chartCard">
       <div class="chartHeader">
         <div>American Odds</div>
         <div>Stake Required</div>
       </div>
       <div id="rangeNote" class="subhead">—</div>
-      <div id="grid" class="grid" aria-live="polite"></div>
+      <div id="grid" class="scrollRow" aria-live="polite"></div>
     </section>
 
     <footer>
-      Built by <strong>Bryan Randol</strong> • <strong>Build-Tessarion</strong>
+      Built by <strong>Bryan Randol</strong> • <strong>Build-Vhagar 🔥🐉</strong>
     </footer>
   </div>
 
 <script>
-/* --- Helpers --- */
 const USD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtUSD=n=>USD.format(n);
 const fmtPct=p=>isFinite(p)?(p*100).toFixed(2)+"%":"—";
-const readMoney=el=>{ const digits=(el.value.match(/\d+/g)||[]).join(""); return digits===""?0:parseInt(digits,10)/100; };
-function maskMoney(el){ const digits=(el.value.match(/\d+/g)||[]).join(""); const cents=digits===""?0:parseInt(digits,10); el.value=USD.format((isNaN(cents)?0:cents)/100); }
-function readOdds(el){ const t=(el.value||"").trim(); if(!/^[+-]?\d+$/.test(t)) return NaN; return Number(t); }
-const isValidOdds = n => Number.isFinite(n) && Math.abs(n) >= 100;
-const americanToProb = (o)=> (!Number.isFinite(o)||o===0)?NaN : (o>0? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
-const stakeForWin = (o,w)=> (!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN : (o>0? (w*100)/o : (w*Math.abs(o))/100);
+const readMoney=el=>{const d=(el.value.match(/\d+/g)||[]).join("");return d===""?0:parseInt(d,10)/100;};
+function maskMoney(el){const d=(el.value.match(/\d+/g)||[]).join("");const c=d===""?0:parseInt(d,10);el.value=USD.format((isNaN(c)?0:c)/100);}
+function readOdds(el){const t=(el.value||"").trim();if(!/^[+-]?\d+$/.test(t))return NaN;return Number(t);}
+const isValidOdds=n=>Number.isFinite(n)&&Math.abs(n)>=100;
+const americanToProb=o=>(!Number.isFinite(o)||o===0)?NaN:(o>0?100/(o+100):Math.abs(o)/(Math.abs(o)+100));
+const stakeForWin=(o,w)=>(!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN:(o>0?(w*100)/o:(w*Math.abs(o))/100);
 
-/* --- UI refs --- */
 const $=id=>document.getElementById(id);
 
-/* --- Rendering --- */
 function renderMain(){
   const winEl=$("win"), oddsEl=$("odds");
-  const okWin = (maskMoney(winEl), readMoney(winEl) > 0);
+  const okWin=(maskMoney(winEl),readMoney(winEl)>0);
   const o=readOdds(oddsEl), okOdds=isValidOdds(o);
-  oddsEl.classList.toggle("valid", okOdds); oddsEl.classList.toggle("invalid", !okOdds && oddsEl.value.trim()!=="");
-
-  if(!okWin || !okOdds){
-    $("stakeOut").textContent="—";
-    $("breakeven").textContent="—";
-    $("rangeNote").textContent="Enter win amount and valid odds (±100 window will appear).";
-    $("grid").innerHTML="";
-    return;
-  }
-
+  oddsEl.classList.toggle("valid",okOdds); oddsEl.classList.toggle("invalid",!okOdds&&oddsEl.value.trim()!=="");
+  if(!okWin||!okOdds){$("stakeOut").textContent="—";$("breakeven").textContent="—";$("rangeNote").textContent="Enter win & odds";$("grid").innerHTML="";return;}
   const win=readMoney(winEl);
-  $("stakeOut").textContent = fmtUSD(stakeForWin(o, win));
-  $("breakeven").textContent = fmtPct(americanToProb(o));
-
-  renderWindow(win, o);
+  $("stakeOut").textContent=fmtUSD(stakeForWin(o,win));
+  $("breakeven").textContent=fmtPct(americanToProb(o));
+  renderWindow(win,o);
 }
-
 function windowBounds(odds){
-  // Build a 100-point band on the SAME SIGN as entered odds.
-  if(odds<0){
-    let start = odds - 100;
-    let end   = odds + 100;
-    // clamp to <= -100
-    end = Math.min(end, -100);
-    start = Math.min(start, odds); // ensure start <= odds
-    // if start > end (e.g., odds near -100), widen backward
-    if(start > end) start = end - 100;
-    return [start, end];
-  }else{
-    let start = odds - 100;
-    let end   = odds + 100;
-    // clamp to >= +100
-    start = Math.max(start, 100);
-    end   = Math.max(end, odds); // ensure end >= odds
-    if(start > end) end = start + 100;
-    return [start, end];
+  if(odds<0){let s=odds-100,e=odds+100;e=Math.min(e,-100);if(s>e)s=e-100;return[s,e];}
+  else{let s=odds-100,e=odds+100;s=Math.max(s,100);if(s>e)e=s+100;return[s,e];}
+}
+function renderWindow(winAmt,odds){
+  const [start,end]=windowBounds(odds);
+  $("rangeNote").textContent=`Showing odds ${start}…${end} (swipe →)`;
+  const grid=$("grid"); grid.innerHTML="";
+  for(let o=start;o<=end;o++){
+    if(Math.abs(o)<100) continue;
+    const stake=stakeForWin(o,winAmt);
+    const div=document.createElement('div');div.className='cell';
+    const oddsDiv=document.createElement('div');oddsDiv.className='odds';oddsDiv.textContent=String(o);
+    const amt=document.createElement('div');amt.className='amt';amt.textContent=fmtUSD(stake);
+    div.appendChild(oddsDiv);div.appendChild(amt);grid.appendChild(div);
   }
 }
-
-function autoSize(cell){
-  const amt=cell.querySelector('.amt'); if(!amt) return;
-  const len=amt.textContent.length;
-  if(len>12){ amt.style.fontSize="9px"; }
-  else if(len>10){ amt.style.fontSize="9.8px"; }
-  else{ amt.style.fontSize="10.5px"; }
-}
-
-function renderWindow(winAmt, odds){
-  const [start, end] = windowBounds(odds);
-  $("rangeNote").textContent = `Showing stakes for odds ${start} … ${end} (step 1)`;
-  const grid=$("grid");
-  grid.innerHTML="";
-  for(let o=start; o<=end; o++){
-    if(o===0 || (Math.abs(o)<100)) continue; // guard, though bounds already preserve sign-validity
-    const stake = stakeForWin(o, winAmt);
-    const div=document.createElement('div'); div.className='cell';
-    const left=document.createElement('div'); left.className='odds'; left.textContent=String(o);
-    const right=document.createElement('div'); right.className='amt'; right.textContent=fmtUSD(stake);
-    div.appendChild(left); div.appendChild(right); grid.appendChild(div);
-    autoSize(div);
-  }
-}
-
-/* --- Init --- */
 function init(){
-  $("win").value="$0.00";
-  $("odds").value="";
-  $("rangeNote").textContent="Enter win amount and odds to view the ±100 window.";
-
-  ["win","odds"].forEach(id=>$(id).addEventListener("input", renderMain));
-  $("toggleOdds").addEventListener("click", ()=>{
-    const el=$("odds"); if(!el.value) return;
-    el.value = el.value.startsWith("-") ? el.value.slice(1)
-             : (el.value.startsWith("+") ? "-"+el.value.slice(1)
-             : "-"+el.value);
-    renderMain();
-  });
-
-  // PWA SW safe no-op
-  if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{});}
-
+  $("win").value="$0.00";$("odds").value="";
+  ["win","odds"].forEach(id=>$(id).addEventListener("input",renderMain));
+  $("toggleOdds").addEventListener("click",()=>{const el=$("odds");if(!el.value)return;el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value);renderMain();});
   renderMain();
+  if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{});}
 }
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init); else init();
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 </script>
 </body>
 </html>
