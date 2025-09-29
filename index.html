@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Odds Calc — Stake Chart (Build-Vermithor)</title>
+  <title>Odds Calc — Stake Chart (Build-Caraxes)</title>
   <meta name="theme-color" content="#5A1414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,7 +11,10 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/favicon.ico">
   <style>
-    :root{--bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;--border:#1f2537}
+    :root{
+      --bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;
+      --border:#1f2537;--stake:#22c55e
+    }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
     .wrap{
@@ -30,15 +33,12 @@
     input[type=text]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
 
     /* Chart */
-    .chartCard{gap:8px;position:relative;max-height:70vh;overflow:auto;-webkit-overflow-scrolling:touch}
+    .chartCard{gap:8px}
     .chartHeader{
       display:flex;justify-content:space-between;font-size:12px;color:var(--muted);
-      position:sticky;top:0;z-index:1;
-      padding:8px 10px;margin:-14px -14px 6px; /* span full card width */
-      background:linear-gradient(#0f172a,#0f172a);
-      border-bottom:1px solid var(--border); border-top-left-radius:14px;border-top-right-radius:14px;
+      padding:0 4px 4px;
     }
-    .grid{column-count:4;column-gap:6px;padding-top:2px}
+    .grid{column-count:4;column-gap:6px}
     @media (max-width:390px){ .grid{ column-count:4; } }
     @media (max-width:360px){ .grid{ column-count:5; } }
 
@@ -46,10 +46,11 @@
       break-inside:avoid;
       display:flex;justify-content:space-between;align-items:center;
       padding:6px 8px;margin:0 0 6px 0;border:1px solid var(--border);border-radius:8px;
-      background:#0c1428;font-variant-numeric:tabular-nums;font-size:11px;line-height:1.1;
+      background:#0c1428;font-variant-numeric:tabular-nums;line-height:1.1;
+      font-size:11px;
     }
-    .odds{opacity:.85}
-    .amt{font-weight:600}
+    .odds{color:var(--muted)}
+    .amt{font-weight:700;color:var(--stake)}
     footer{font-size:12px;color:var(--muted);text-align:center;padding:4px 0 10px}
   </style>
 </head>
@@ -57,7 +58,7 @@
   <div class="wrap">
     <header>
       <h1>Stake Chart</h1>
-      <div class="muted small">Build-Vermithor • Enter desired win → see stake for –500…–105 (×5)</div>
+      <div class="muted small">Build-Caraxes • Enter desired win → see stake for –500…–105 (×5)</div>
     </header>
 
     <section class="card">
@@ -76,14 +77,14 @@
     </section>
 
     <footer>
-      Built by <strong>Bryan Randol</strong> • <strong>Build-Vermithor</strong>
+      Built by <strong>Bryan Randol</strong> • <strong>Build-Caraxes</strong>
     </footer>
   </div>
 
 <script>
-const USD = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtUSD = n => USD.format(n);
-const readMoney = el => {
+const USD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtUSD=n=>USD.format(n);
+const readMoney=el=>{
   const digits=(el.value.match(/\d+/g)||[]).join("");
   return digits===""?0:parseInt(digits,10)/100;
 };
@@ -92,27 +93,35 @@ function maskMoney(el){
   const cents=digits===""?0:parseInt(digits,10);
   el.value=USD.format((isNaN(cents)?0:cents)/100);
 }
-function stakeForNegOdds(absNegOdds, win){ return (win * absNegOdds) / 100; }
+function stakeForNegOdds(absNegOdds,win){return(win*absNegOdds)/100;}
+function autoSize(cell){
+  const amt=cell.querySelector('.amt');
+  if(!amt) return;
+  const len=amt.textContent.length;
+  if(len>10){ amt.style.fontSize="9px"; }
+  else if(len>8){ amt.style.fontSize="10px"; }
+  else{ amt.style.fontSize="11px"; }
+}
 function renderGrid(winAmt){
   const grid=document.getElementById('grid');
   grid.innerHTML="";
   for(let o=-500;o<=-105;o+=5){
-    const stake=stakeForNegOdds(Math.abs(o), winAmt);
+    const stake=stakeForNegOdds(Math.abs(o),winAmt);
     const div=document.createElement('div');
     div.className='cell';
-    const odds=document.createElement('div'); odds.className='odds'; odds.textContent=String(o);
-    const amt=document.createElement('div'); amt.className='amt'; amt.textContent=fmtUSD(stake);
-    div.appendChild(odds); div.appendChild(amt); grid.appendChild(div);
+    const odds=document.createElement('div');odds.className='odds';odds.textContent=String(o);
+    const amt=document.createElement('div');amt.className='amt';amt.textContent=fmtUSD(stake);
+    div.appendChild(odds);div.appendChild(amt);grid.appendChild(div);
+    autoSize(div);
   }
 }
 function init(){
   const winEl=document.getElementById('win');
-  winEl.value="$0.00";
-  renderGrid(0);
-  winEl.addEventListener('input',()=>{ maskMoney(winEl); renderGrid(readMoney(winEl)); });
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
+  winEl.value="$0.00";renderGrid(0);
+  winEl.addEventListener('input',()=>{maskMoney(winEl);renderGrid(readMoney(winEl));});
+  if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{});}
 }
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init); else init();
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 </script>
 </body>
 </html>
