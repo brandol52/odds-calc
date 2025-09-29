@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Odds Calc — Stake Chart (Build-Caraxes)</title>
+  <title>Odds Calc — Stake Chart (Build-Seasmoke)</title>
   <meta name="theme-color" content="#5A1414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,7 +13,7 @@
   <style>
     :root{
       --bg:#0c111b;--fg:#edf2f7;--muted:#9aa4b2;--card:#0f172a;
-      --border:#1f2537;--stake:#22c55e
+      --border:#1f2537;--stake:#22c55e;--btn:#0b1324;--btnActive:#1b2438
     }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
@@ -32,22 +32,28 @@
       padding:10px 12px;font-size:16px;outline:none;-webkit-appearance:none}
     input[type=text]:focus{border-color:#334155;box-shadow:0 0 0 2px #33415555}
 
+    /* Range buttons */
+    .ranges{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .ranges button{
+      border:1px solid var(--border);background:var(--btn);color:var(--fg);
+      border-radius:10px;padding:10px 8px;font-size:14px
+    }
+    .ranges button.active{background:var(--btnActive);border-color:#2b3550}
+    .ranges button small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+
     /* Chart */
     .chartCard{gap:8px}
-    .chartHeader{
-      display:flex;justify-content:space-between;font-size:12px;color:var(--muted);
-      padding:0 4px 4px;
-    }
-    .grid{column-count:4;column-gap:6px}
-    @media (max-width:390px){ .grid{ column-count:4; } }
-    @media (max-width:360px){ .grid{ column-count:5; } }
+    .chartHeader{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:0 4px 4px}
+    .grid{column-count:6;column-gap:6px}            /* dense to fit 100+ rows without scroll */
+    @media (max-width:430px){ .grid{ column-count:6; } }
+    @media (max-width:400px){ .grid{ column-count:7; } }
+    @media (max-width:360px){ .grid{ column-count:8; } }
 
     .cell{
       break-inside:avoid;
       display:flex;justify-content:space-between;align-items:center;
       padding:6px 8px;margin:0 0 6px 0;border:1px solid var(--border);border-radius:8px;
-      background:#0c1428;font-variant-numeric:tabular-nums;line-height:1.1;
-      font-size:11px;
+      background:#0c1428;font-variant-numeric:tabular-nums;line-height:1.1;font-size:11px;
     }
     .odds{color:var(--muted)}
     .amt{font-weight:700;color:var(--stake)}
@@ -58,13 +64,19 @@
   <div class="wrap">
     <header>
       <h1>Stake Chart</h1>
-      <div class="muted small">Build-Caraxes • Enter desired win → see stake for –500…–105 (×5)</div>
+      <div class="muted small">Build-Seasmoke 🔥🐉 • Enter desired win → tap a range</div>
     </header>
 
     <section class="card">
       <label for="win">Desired Win ($)</label>
       <div class="field">
         <input id="win" type="text" inputmode="numeric" placeholder="$0.00" autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <div class="ranges" role="tablist" aria-label="Odds ranges">
+        <button type="button" data-range="-500,-400" aria-selected="true" class="active" role="tab">−500…−400<small>step 1</small></button>
+        <button type="button" data-range="-399,-300" role="tab">−399…−300<small>step 1</small></button>
+        <button type="button" data-range="-299,-200" role="tab">−299…−200<small>step 1</small></button>
+        <button type="button" data-range="-199,-100" role="tab">−199…−100<small>step 1</small></button>
       </div>
     </section>
 
@@ -77,7 +89,7 @@
     </section>
 
     <footer>
-      Built by <strong>Bryan Randol</strong> • <strong>Build-Caraxes</strong>
+      Built by <strong>Bryan Randol</strong> • <strong>Build-Seasmoke 🔥🐉</strong>
     </footer>
   </div>
 
@@ -95,30 +107,55 @@ function maskMoney(el){
 }
 function stakeForNegOdds(absNegOdds,win){return(win*absNegOdds)/100;}
 function autoSize(cell){
-  const amt=cell.querySelector('.amt');
-  if(!amt) return;
+  const amt=cell.querySelector('.amt'); if(!amt) return;
   const len=amt.textContent.length;
   if(len>10){ amt.style.fontSize="9px"; }
   else if(len>8){ amt.style.fontSize="10px"; }
   else{ amt.style.fontSize="11px"; }
 }
-function renderGrid(winAmt){
+function renderGrid(winAmt,start,end){
   const grid=document.getElementById('grid');
   grid.innerHTML="";
-  for(let o=-500;o<=-105;o+=5){
+  for(let o=start;o<=end;o++){
     const stake=stakeForNegOdds(Math.abs(o),winAmt);
-    const div=document.createElement('div');
-    div.className='cell';
-    const odds=document.createElement('div');odds.className='odds';odds.textContent=String(o);
-    const amt=document.createElement('div');amt.className='amt';amt.textContent=fmtUSD(stake);
-    div.appendChild(odds);div.appendChild(amt);grid.appendChild(div);
+    const div=document.createElement('div'); div.className='cell';
+    const odds=document.createElement('div'); odds.className='odds'; odds.textContent=String(o);
+    const amt=document.createElement('div'); amt.className='amt'; amt.textContent=fmtUSD(stake);
+    div.appendChild(odds); div.appendChild(amt); grid.appendChild(div);
     autoSize(div);
   }
 }
+function setActive(btn){
+  document.querySelectorAll('.ranges button').forEach(b=>{b.classList.remove('active'); b.setAttribute('aria-selected','false');});
+  btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+}
 function init(){
   const winEl=document.getElementById('win');
-  winEl.value="$0.00";renderGrid(0);
-  winEl.addEventListener('input',()=>{maskMoney(winEl);renderGrid(readMoney(winEl));});
+  const rangeButtons=[...document.querySelectorAll('.ranges button')];
+  let currentRange=[-500,-400];
+
+  // Initial
+  winEl.value="$0.00";
+  renderGrid(0,currentRange[0],currentRange[1]);
+
+  // Money input
+  winEl.addEventListener('input',()=>{
+    maskMoney(winEl);
+    const w=readMoney(winEl);
+    renderGrid(w,currentRange[0],currentRange[1]);
+  });
+
+  // Range switching
+  rangeButtons.forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const [s,e]=btn.dataset.range.split(',').map(Number);
+      currentRange=[s,e];
+      setActive(btn);
+      renderGrid(readMoney(winEl),s,e);
+    });
+  });
+
+  // PWA SW
   if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{});}
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
