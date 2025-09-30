@@ -1,6 +1,6 @@
 <!--
   Odds Calc — Stake Window
-  Build: Silverwing 🔥🐉
+  Build: Vhagar 🔥🐉
   Date: 2025-09-30
   Author: Bryan Randol
 -->
@@ -10,7 +10,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Odds Calc — Stake Window (Build-Silverwing 🔥🐉)</title>
+  <title>Odds Calc — Stake Window (Build-Vhagar 🔥🐉)</title>
   <meta name="theme-color" content="#5A1414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -21,7 +21,7 @@
     :root{ --bg:#0b1118; --fg:#eef1f5; --muted:#9aa4b2; --card:#0f172a; --border:#1c2234; --ok:#22c55e; --btn:#0b1324 }
     *{box-sizing:border-box}
     html,body{ margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif }
-    .wrap{ max-width:560px; width:100%; margin:0 auto; padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left)); display:grid; row-gap:8px; grid-template-rows:auto auto auto auto }
+    .wrap{ max-width:560px; width:100%; margin:0 auto; padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left)); display:grid; row-gap:8px; grid-template-rows:auto auto auto }
     h1{ margin:0 0 2px; font-size:16px }
     .muted{ color:var(--muted) } .small{ font-size:11px }
 
@@ -35,16 +35,18 @@
     .valid{ border-color:var(--ok) } .invalid{ border-color:#ef4444 }
     .err{ color:#ef4444; font-size:11px; margin-top:4px }
     button{ border:1px solid var(--border); background:var(--btn); color:var(--fg); border-radius:8px; padding:8px 10px; font-size:14px }
-    .result{ display:flex; justify-content:space-between; gap:8px; padding:6px 8px; background:#0c1428; border:1px solid var(--border); border-radius:8px; font-variant-numeric:tabular-nums }
 
-    /* Bottom chart: vertical scroll with sticky header */
-    .chartCard{ padding:0; overflow:hidden }
-    .chartHeader{ position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:10px; background:#0f172a; border-bottom:1px solid var(--border); font-size:12px; color:var(--muted) }
-    .subhead{ position:sticky; top:36px; z-index:2; padding:6px 10px; background:#0f172a; border-bottom:1px dashed var(--border); font-size:11px; color:var(--muted) }
-    .scrollY{ max-height:56vh; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:8px 10px 10px 10px }
-    .cell{ display:flex; justify-content:space-between; align-items:center; padding:6px 8px; margin-bottom:6px; border:1px solid var(--border); border-radius:8px; background:#0c1428; font-variant-numeric:tabular-nums; line-height:1.1; font-size:11px }
-    .odds{ color:var(--muted) }
-    .amt{ font-weight:700; color:var(--ok); white-space:nowrap }
+    .resultBox{ display:flex; flex-direction:column; gap:6px; padding:12px; background:#0c1428; border:1px solid var(--border); border-radius:12px; align-items:center; }
+    .resultBox label{ font-size:12px; color:var(--muted); margin-bottom:4px }
+    .amtLarge{ font-size:24px; font-weight:800; color:var(--ok); text-align:center }
+    .breakevenSmall{ font-size:12px; color:var(--muted); text-align:center }
+
+    input.valid:focus{ border-color:var(--ok); box-shadow:0 0 0 2px rgba(34,197,94,.3) }
+    input.invalid, input.invalid:focus{ border-color:#ef4444 !important; box-shadow:0 0 0 2px rgba(239,68,68,.25) !important }
+
+    .infoIcon{ color:var(--muted); font-size:0.85em; vertical-align:super; cursor:help }
+    .infoIcon:hover{ color:#ffffff; }
+
     footer{ font-size:10.5px; color:var(--muted); text-align:center; padding:2px 0 4px }
   </style>
 </head>
@@ -52,7 +54,7 @@
   <div class="wrap">
     <header>
       <h1>Stake Window</h1>
-      <div class="muted small">Build-Silverwing 🔥🐉 • Enter desired win + odds → stakes</div>
+      <div class="muted small">Build-Vhagar 🔥🐉 • Enter desired win + odds → stakes</div>
     </header>
 
     <!-- Inputs -->
@@ -71,31 +73,22 @@
           <div class="field">
             <input id="odds" type="text" inputmode="numeric" placeholder="+150 or -120" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="6">
           </div>
-          <div id="oddsErr" class="err" style="display:none">Invalid odds entered. (Must be at least +-100)</div>
+          <div id="oddsErr" class="err" style="display:none" aria-live="polite">Invalid odds entered. (Must be at least +-100)</div>
         </div>
         <div>
           <label class="small muted">&nbsp;</label>
           <button id="toggleOdds" type="button" title="Flip sign">±</button>
         </div>
       </div>
-      <div class="result"><div>Required Stake</div><div id="stakeOut">—</div></div>
-      <div class="result"><div>Break-even (Implied)</div><div id="breakeven">—</div></div>
-    </section>
-
-    <!-- Vertical-scroll window (±100 points, step 1) -->
-    <section class="card chartCard">
-      <div class="chartHeader">
-        <div>American Odds</div>
-        <div>Stake Required</div>
-      </div>
-      <div id="rangeNote" class="subhead">Enter win amount and odds to view the ±100 window.</div>
-      <div id="gridWrap" class="scrollY">
-        <div id="grid"></div>
+      <div class="resultBox">
+        <label>Required Stake</label>
+        <div id="stakeOut" class="amtLarge">—</div>
+        <div id="breakeven" class="breakevenSmall">Implied win probability <span class="infoIcon" title="This is the implied probability of winning at the entered odds (100/(odds+100) for positive odds, |odds|/(|odds|+100) for negative odds).">&#9432;</span>: <span id="probValue">—</span> <span id="favType"></span></div>
       </div>
     </section>
 
     <footer>
-      Built by <strong>Bryan Randol</strong> • <strong>Build-Silverwing 🔥🐉</strong>
+      Built by <strong>Bryan Randol</strong> • <strong>Build-Vhagar 🔥🐉</strong>
     </footer>
   </div>
 
@@ -105,26 +98,28 @@ const USD = new Intl.NumberFormat('en-US',{ style:'currency', currency:'USD', mi
 const fmtUSD = n => USD.format(n);
 const fmtPct = p => (Number.isFinite(p)? (p*100).toFixed(2)+"%" : "—");
 
-// Money mask with caret preservation (iOS-safe)
+// Money helpers
 function readMoney(el){
-  const digits = (el.value.match(/\\d+/g)||[]).join("");
+  const digits = (el.value.match(/\d+/g)||[]).join("");
   return digits==="" ? 0 : parseInt(digits,10)/100;
 }
 function maskMoneyCareful(el){
-  const selEndFromRight = el.value.length - el.selectionEnd;
-  const digits = (el.value.match(/\\d+/g)||[]).join("");
+  const hasSel = typeof el.selectionEnd === 'number';
+  const selEndFromRight = hasSel ? (el.value.length - el.selectionEnd) : 0;
+  const digits = (el.value.match(/\d+/g)||[]).join("");
   const cents = digits==="" ? 0 : parseInt(digits,10);
   const next = USD.format((isNaN(cents)?0:cents)/100);
   el.value = next;
-  // Restore caret near end; best effort on iOS
-  const pos = Math.max(0, el.value.length - selEndFromRight);
-  requestAnimationFrame(()=>{ try{ el.setSelectionRange(pos,pos); }catch(_){} });
+  if(hasSel){
+    const pos = Math.max(0, el.value.length - selEndFromRight);
+    requestAnimationFrame(()=>{ try{ el.setSelectionRange(pos,pos); }catch(_){} });
+  }
 }
 
 // Odds parsing/validation
 function readOdds(el){
   const t = (el.value||"").trim();
-  if(!/^[-+]?\\d+$/.test(t)) return NaN;
+  if(!/^[-+]?\d+$/.test(t)) return NaN;
   return Number(t);
 }
 const isValidOdds = n => Number.isFinite(n) && Math.abs(n)>=100;
@@ -132,65 +127,70 @@ const americanToProb = o => (!Number.isFinite(o)||o===0)?NaN:(o>0? 100/(o+100) :
 const stakeForWin = (o,w) => (!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN:(o>0? (w*100)/o : (w*Math.abs(o))/100);
 const $ = id => document.getElementById(id);
 
-// Render core
-function renderMain(){
+function updateUI(){
   const winEl=$("win"), oddsEl=$("odds"), errEl=$("oddsErr");
-  maskMoneyCareful(winEl);
   const win = readMoney(winEl);
   const o = readOdds(oddsEl);
-  const okWin = win>0, okOdds = isValidOdds(o);
-  oddsEl.classList.toggle("valid", okOdds);
-  oddsEl.classList.toggle("invalid", !okOdds && oddsEl.value.trim()!="");
-  if(oddsEl.value.trim()===""){ errEl.style.display="none"; }
-  else if(!okOdds){ errEl.style.display="block"; }
-  else { errEl.style.display="none"; }
-  if(!okWin || !okOdds){
-    $("stakeOut").textContent = "—";
-    $("breakeven").textContent = "—";
-    $("rangeNote").textContent = "Enter win amount and odds to view the ±100 window.";
-    $("grid").innerHTML = "";
-    return;
-  }
-  $("stakeOut").textContent = fmtUSD(stakeForWin(o,win));
-  $("breakeven").textContent = fmtPct(americanToProb(o));
-  renderWindow(win,o);
-}
+  const okOdds = isValidOdds(o);
+  const okWin = win>0;
 
-function windowBounds(odds){
-  if(odds<0){ let s=odds-100, e=odds+100; e=Math.min(e,-100); if(s>e) s=e-100; return [s,e]; }
-  else{ let s=odds-100, e=odds+100; s=Math.max(s,100); if(s>e) e=s+100; return [s,e]; }
-}
+  const hasValue = oddsEl.value.trim() !== "";
+  oddsEl.classList.toggle("valid", hasValue && okOdds);
+  oddsEl.classList.toggle("invalid", hasValue && !okOdds);
+  oddsEl.setAttribute("aria-invalid", String(hasValue && !okOdds));
+  errEl.style.display = (hasValue && !okOdds) ? "block" : "none";
 
-function renderWindow(winAmt,odds){
-  const [start,end]=windowBounds(odds);
-  $("rangeNote").textContent = `Showing odds ${start}…${end} (step 1)`;
-  const grid=$("grid");
-  grid.innerHTML="";
-  const frag=document.createDocumentFragment();
-  for(let o=start;o<=end;o++){
-    if(Math.abs(o)<100) continue; // guard
-    const stake=stakeForWin(o,winAmt);
-    const row=document.createElement('div'); row.className='cell';
-    const left=document.createElement('div'); left.className='odds'; left.textContent=String(o);
-    const right=document.createElement('div'); right.className='amt'; right.textContent=fmtUSD(stake);
-    row.appendChild(left); row.appendChild(right); frag.appendChild(row);
+  // Probability & favorite/longshot classification
+  if(okOdds){
+    $("probValue").textContent = fmtPct(americanToProb(o));
+    let type = '';
+    if(o === -100 || o === 100){
+      type = '(Even)';
+    } else if(o < -300){
+      type = '(Heavy Favorite)';
+    } else if(o < -150){
+      type = '(Favorite)';
+    } else if(o < -100){
+      type = '(Slight Favorite)';
+    } else if(o > 300){
+      type = '(Lottery Ticket Play)';
+    } else if(o > 200){
+      type = '(Longshot)';
+    } else if(o > 100){
+      type = '(Slight Longshot)';
+    }
+    $("favType").textContent = type;
+  } else {
+    $("probValue").textContent = "—";
+    $("favType").textContent = '';
   }
-  grid.appendChild(frag);
+
+  // Stake requires both a positive win amount and valid odds
+  $("stakeOut").textContent = (okWin && okOdds) ? fmtUSD(stakeForWin(o,win)) : "—";
 }
 
 function init(){
-  $("win").value = "$0.00";
-  $("odds").value = "";
-  ["win","odds"].forEach(id=>$(id).addEventListener("input", renderMain, {passive:true}));
+  const winEl=$("win"), oddsEl=$("odds");
+  winEl.value = "$0.00";
+  oddsEl.value = "";
+
+  // Mask money on each input, then update UI
+  winEl.addEventListener("input", ()=>{ maskMoneyCareful(winEl); updateUI(); }, {passive:true});
+  winEl.addEventListener("blur", ()=>{ maskMoneyCareful(winEl); });
+
+  // Odds input just updates UI
+  oddsEl.addEventListener("input", updateUI, {passive:true});
+
+  // Flip odds sign using numeric parse → string with explicit sign
   $("toggleOdds").addEventListener("click", ()=>{
-    const el=$("odds");
-    if(!el.value) return;
-    if(/^\\+/.test(el.value)) el.value = el.value.replace(/^\\+/, "-");
-    else if(/^\\-/.test(el.value)) el.value = el.value.replace(/^\\-/, "+");
-    else el.value = (el.value.startsWith("-")? el.value.slice(1) : "-"+el.value);
-    renderMain();
+    const n = readOdds(oddsEl);
+    if(!Number.isFinite(n)) return;
+    const flipped = -n;
+    oddsEl.value = (flipped>0? "+"+flipped : String(flipped));
+    updateUI();
   });
-  renderMain();
+
+  updateUI();
   if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
 }
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init); else init();
