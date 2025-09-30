@@ -52,7 +52,7 @@
   <div class="wrap">
     <header>
       <h1 id="appTitle">Stake Window</h1>
-      <div class="muted small">Build‑Moondancer 🔥🐉 • Enter desired win + odds → stakes</div>
+      <div class="muted small">Build‑Moondancer • Enter desired win + odds → stakes</div>
     </header>
 
     <!-- Inputs -->
@@ -101,7 +101,7 @@
     </section>
 
     <footer>
-      Built by <strong>Bryan Randol</strong> • <strong>Build‑Moondancer 🔥🐉 </strong>
+      Built by <strong>Bryan Randol</strong> • <strong>Build‑Moondancer</strong>
     </footer>
   </div>
 
@@ -111,9 +111,20 @@ const USD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimum
 const fmtUSD=n=>USD.format(n);
 const fmtPct=p=>Number.isFinite(p)?(p*100).toFixed(2)+"%":"—";
 
-// Money masking — keeps cents while typing; stores raw cents in dataset
-function readMoney(el){const d=(el.value.match(/\d+/g)||[]).join("");return d===""?0:parseInt(d,10)/100}
-function maskMoney(el){const d=(el.value.match(/\d+/g)||[]).join("");const c=d===""?0:parseInt(d,10);el.value=USD.format((isNaN(c)?0:c)/100)}
+// Money masking — robust, caret-safe, iOS-friendly
+function readMoney(el){
+  const raw=(el.value||'').replace(/[^0-9]/g,'');
+  if(raw==='') return 0;
+  const cents=parseInt(raw,10);
+  return isNaN(cents)?0:cents/100;
+}
+function maskMoney(el){
+  const selEnd=el.selectionEnd; // keep caret close to end; simple approach
+  const dollars=readMoney(el);
+  el.value=USD.format(dollars);
+  // put caret at end (most mobile users type at end)
+  try{el.setSelectionRange(el.value.length,el.value.length);}catch{}
+}
 
 // Odds parsing — only allow optional sign + digits
 function readOdds(el){const t=(el.value||"").trim();if(!/^[+-]?\d+$/.test(t))return NaN;return Number(t)}
@@ -190,9 +201,16 @@ function restore(){
 
 /***** Controls *****/
 function nudge(delta){
-  const el=$("odds")
-  const v=readOdds(el)
+  const el=$("odds");
+  const v=readOdds(el);
   if(!Number.isFinite(v)){toast('Enter odds first');return}
+  let next=v+delta; // simple arithmetic
+  // enforce |odds| >= 100 and correct sign if we cross 0
+  if(v>0){ if(next<100) next=100; }
+  else { if(next>-100) next=-100; }
+  el.value=String(next);
+  renderMain();
+}
   const sign=v>0?1:-1
   let next=v+delta*sign // keep sign consistent when nudging
   if(Math.abs(next)<100){next=sign*100}
@@ -206,18 +224,27 @@ function init(){
 
   ["win","odds"].forEach(id=>$(id).addEventListener("input",renderMain))
 
-  // constrain odds input to sign+digits only
-  $("odds").addEventListener('beforeinput',e=>{
+  // (Removed restrictive beforeinput filter to avoid iOS key issues).addEventListener('beforeinput',e=>{
     if(e.data && !/[0-9+-]/.test(e.data)) e.preventDefault()
   })
 
   $("toggleOdds").addEventListener("click",()=>{
+    const el=$("odds");
+    if(!el.value){toast('Enter odds first');return}
+    const v=readOdds(el);
+    if(!Number.isFinite(v)){toast('Invalid odds');return}
+    const flipped = -v;
+    // clamp to valid American odds domain
+    if(Math.abs(flipped)<100){ el.value = flipped<0?'-100':'100'; }
+    else { el.value = String(flipped); }
+    renderMain();
+  })=>{
     const el=$("odds"); if(!el.value){toast('Enter odds first');return}
     el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value)
     renderMain()
   })
-  $("incOdds").addEventListener('click',()=>nudge(+1))
-  $("decOdds").addEventListener('click',()=>nudge(-1))
+  $("incOdds").addEventListener('click',()=>nudge(+1))=>nudge(+1))
+  $("decOdds").addEventListener('click',()=>nudge(-1))=>nudge(-1))
 
   // keyboard nudges
   $("odds").addEventListener('keydown',e=>{
