@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Odds Calc — Stake Window (Build‑Moondancer)</title>
+  <title>Odds Calc — Stake Window (Build-Moondancer)</title>
   <meta name="theme-color" content="#5A1414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -13,36 +13,61 @@
   <style>
     :root{
       --bg:#0b1118;--fg:#eef1f5;--muted:#9aa4b2;--card:#0f172a;--border:#1c2234;
-      --ok:#22c55e;--btn:#0b1324;--err:#ef4444
+      --ok:#22c55e;--btn:#0b1324
     }
     *{box-sizing:border-box}
-    html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-    .wrap{max-width:560px;width:100%;margin:0 auto;padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));display:grid;row-gap:8px;grid-template-rows:auto auto auto auto}
+    html,body{
+      margin:0;background:var(--bg);color:var(--fg);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    .wrap{
+      max-width:560px;width:100%;margin:0 auto;
+      padding:calc(10px + env(safe-area-inset-top))
+              calc(12px + env(safe-area-inset-right))
+              calc(10px + env(safe-area-inset-bottom))
+              calc(12px + env(safe-area-inset-left));
+      display:grid;row-gap:8px;
+      grid-template-rows:auto auto auto auto;
+    }
     h1{margin:0 0 2px;font-size:16px}
     .muted{color:var(--muted)} .small{font-size:11px}
 
     .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
-    .row{display:flex;gap:8px;align-items:flex-end}
+    .row{display:flex;gap:8px;align-items:center}
     .col{flex:1}
     label{display:block;margin-bottom:4px;color:var(--muted);font-size:12px}
     .field{position:relative}
-    input[type=text]{width:100%;background:#0a1324;border:1px solid var(--border);border-radius:8px;color:var(--fg);padding:8px 10px;font-size:15px;outline:none;-webkit-appearance:none}
+    input[type=text]{width:100%;background:#0a1324;border:1px solid var(--border);border-radius:8px;color:var(--fg);
+      padding:8px 10px;font-size:15px;outline:none;-webkit-appearance:none}
     input[type=text]:focus{border-color:#31405e;box-shadow:0 0 0 2px #31405e55}
-    .valid{border-color:var(--ok)} .invalid{border-color:var(--err)}
-    .hint{min-height:14px;font-size:11px;color:var(--muted)}
-
+    .valid{border-color:var(--ok)} .invalid{border-color:#ef4444}
     button{border:1px solid var(--border);background:var(--btn);color:var(--fg);border-radius:8px;padding:8px 10px;font-size:14px}
-    .iconBtn{width:42px;min-width:42px;height:36px;display:inline-flex;align-items:center;justify-content:center}
-    .group{display:flex;gap:6px}
-
     .result{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;background:#0c1428;border:1px solid var(--border);border-radius:8px;font-variant-numeric:tabular-nums}
 
     /* Bottom chart: vertical scroll with sticky header */
     .chartCard{padding:0;overflow:hidden}
-    .chartHeader{position:sticky; top:0; z-index:2; display:flex;justify-content:space-between;align-items:center; padding:10px; background:#0f172a; border-bottom:1px solid var(--border); font-size:12px; color:var(--muted)}
-    .subhead{position:sticky; top:36px; z-index:2; padding:6px 10px; background:#0f172a; border-bottom:1px dashed var(--border); font-size:11px; color:var(--muted)}
-    .scrollY{max-height:56vh; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:8px 10px 10px 10px}
-    .cell{display:flex;justify-content:space-between;align-items:center; padding:6px 8px; margin-bottom:6px; border:1px solid var(--border); border-radius:8px; background:#0c1428; font-variant-numeric:tabular-nums; line-height:1.1; font-size:11px}
+    .chartHeader{
+      position:sticky; top:0; z-index:2;
+      display:flex;justify-content:space-between;align-items:center;
+      padding:10px; background:#0f172a; border-bottom:1px solid var(--border);
+      font-size:12px; color:var(--muted);
+    }
+    .subhead{
+      position:sticky; top:36px; z-index:2;
+      padding:6px 10px; background:#0f172a; border-bottom:1px dashed var(--border);
+      font-size:11px; color:var(--muted);
+    }
+    .scrollY{
+      max-height:56vh;               /* vertical scroll area size */
+      overflow-y:auto; -webkit-overflow-scrolling:touch;
+      padding:8px 10px 10px 10px;
+    }
+    .cell{
+      display:flex;justify-content:space-between;align-items:center;
+      padding:6px 8px; margin-bottom:6px;
+      border:1px solid var(--border); border-radius:8px;
+      background:#0c1428; font-variant-numeric:tabular-nums; line-height:1.1; font-size:11px;
+    }
     .odds{color:var(--muted)}
     .amt{font-weight:700;color:var(--ok);white-space:nowrap}
     footer{font-size:10.5px;color:var(--muted);text-align:center;padding:2px 0 4px}
@@ -51,223 +76,101 @@
 <body>
   <div class="wrap">
     <header>
-      <h1 id="appTitle">Stake Window</h1>
-      <div class="muted small">Build‑Moondancer • Enter desired win + odds → stakes</div>
+      <h1>Stake Window</h1>
+      <div class="muted small">Build-Moondancer 🔥🐉• Enter desired win + odds → stakes</div>
     </header>
 
     <!-- Inputs -->
-    <section class="card" aria-labelledby="inputsHd">
-      <h2 id="inputsHd" class="small muted" style="margin:0">Inputs</h2>
+    <section class="card">
       <div class="row">
         <div class="col">
           <label for="win">Desired Win ($)</label>
           <div class="field">
-            <input id="win" type="text" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" aria-describedby="winHint" placeholder="$0.00">
+            <input id="win" type="text" inputmode="numeric" placeholder="$0.00" autocomplete="off" autocorrect="off" spellcheck="false">
           </div>
-          <div id="winHint" class="hint">Type the amount you want to <em>win</em>; stake is calculated from odds.</div>
         </div>
       </div>
       <div class="row">
         <div class="col">
           <label for="odds">American Odds</label>
           <div class="field">
-            <input id="odds" type="text" inputmode="numeric" maxlength="6" placeholder="+150 or -120" autocomplete="off" autocorrect="off" spellcheck="false" aria-describedby="oddsHint">
+            <input id="odds" type="text" inputmode="numeric" placeholder="+150 or -120" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="6">
           </div>
-          <div id="oddsHint" class="hint">Valid values are ≤ −100 or ≥ +100. Use the ± button or ↑/↓ keys to nudge.</div>
         </div>
-        <div class="group" aria-label="Odds controls">
-          <button id="toggleOdds" type="button" title="Flip sign" class="iconBtn" aria-label="Flip sign">±</button>
-          <button id="decOdds" type="button" title="−1" class="iconBtn" aria-label="Decrease by 1">−</button>
-          <button id="incOdds" type="button" title="+1" class="iconBtn" aria-label="Increase by 1">+</button>
+        <div>
+          <label class="small muted">&nbsp;</label>
+          <button id="toggleOdds" type="button" title="Flip sign">±</button>
         </div>
       </div>
-      <div class="result" role="status" aria-live="polite"><div>Required Stake</div><div id="stakeOut">—</div></div>
-      <div class="result"><div>Break‑even (Implied)</div><div id="breakeven">—</div></div>
-      <div class="group">
-        <button id="copyStake" type="button" title="Copy stake amount">Copy Stake</button>
-        <button id="shareLink" type="button" title="Share link with current values">Share</button>
-        <span id="toast" class="small muted" aria-live="polite"></span>
-      </div>
+      <div class="result"><div>Required Stake</div><div id="stakeOut">—</div></div>
+      <div class="result"><div>Break-even (Implied)</div><div id="breakeven">—</div></div>
     </section>
 
     <!-- Vertical-scroll window (±100 points, step 1) -->
-    <section class="card chartCard" aria-labelledby="tblHd">
-      <div class="chartHeader" id="tblHd" role="heading" aria-level="2">
+    <section class="card chartCard">
+      <div class="chartHeader">
         <div>American Odds</div>
         <div>Stake Required</div>
       </div>
       <div id="rangeNote" class="subhead">Enter win amount and odds to view the ±100 window.</div>
-      <div id="gridWrap" class="scrollY"><div id="grid" role="list"></div></div>
+      <div id="gridWrap" class="scrollY">
+        <div id="grid"></div>
+      </div>
     </section>
 
     <footer>
-      Built by <strong>Bryan Randol</strong> • <strong>Build‑Moondancer</strong>
+      Built by <strong>Bryan Randol</strong> • <strong>Build-Moondancer</strong>
     </footer>
   </div>
 
 <script>
-/***** Helpers *****/
 const USD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtUSD=n=>USD.format(n);
-const fmtPct=p=>Number.isFinite(p)?(p*100).toFixed(2)+"%":"—";
+const fmtPct=p=>isFinite(p)?(p*100).toFixed(2)+"%":"—";
+const readMoney=el=>{const d=(el.value.match(/\d+/g)||[]).join("");return d===""?0:parseInt(d,10)/100;};
+function maskMoney(el){const d=(el.value.match(/\d+/g)||[]).join("");const c=d===""?0:parseInt(d,10);el.value=USD.format((isNaN(c)?0:c)/100);}
+function readOdds(el){const t=(el.value||"").trim();if(!/^[+-]?\d+$/.test(t))return NaN;return Number(t);}
+const isValidOdds=n=>Number.isFinite(n)&&Math.abs(n)>=100;
+const americanToProb=o=>(!Number.isFinite(o)||o===0)?NaN:(o>0?100/(o+100):Math.abs(o)/(Math.abs(o)+100));
+const stakeForWin=(o,w)=>(!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN:(o>0?(w*100)/o:(w*Math.abs(o))/100);
+const $=id=>document.getElementById(id);
 
-// Money masking — robust, caret-safe, iOS-friendly
-function readMoney(el){
-  const raw=(el.value||'').replace(/[^0-9]/g,'');
-  if(raw==='') return 0;
-  const cents=parseInt(raw,10);
-  return isNaN(cents)?0:cents/100;
-}
-function maskMoney(el){
-  const selEnd=el.selectionEnd; // keep caret close to end; simple approach
-  const dollars=readMoney(el);
-  el.value=USD.format(dollars);
-  // put caret at end (most mobile users type at end)
-  try{el.setSelectionRange(el.value.length,el.value.length);}catch{}
-}
-
-// Odds parsing — only allow optional sign + digits
-function readOdds(el){const t=(el.value||"").trim();if(!/^[+-]?\d+$/.test(t))return NaN;return Number(t)}
-const isValidOdds=n=>Number.isFinite(n)&&Math.abs(n)>=100
-
-// Conversions
-const americanToProb=o=>!Number.isFinite(o)||o===0?NaN:(o>0?100/(o+100):Math.abs(o)/(Math.abs(o)+100))
-const stakeForWin=(o,w)=>!Number.isFinite(o)||!Number.isFinite(w)||o===0?NaN:(o>0?(w*100)/o:(w*Math.abs(o))/100)
-
-// DOM shorthands
-const $=id=>document.getElementById(id)
-const toast=msg=>{const t=$("toast");t.textContent=msg;clearTimeout(toast._t);toast._t=setTimeout(()=>t.textContent="",1800)}
-
-/***** Core rendering *****/
 function renderMain(){
-  const winEl=$("win"), oddsEl=$("odds")
-  maskMoney(winEl)
-  const okWin=readMoney(winEl)>0
-  const o=readOdds(oddsEl), okOdds=isValidOdds(o)
-  oddsEl.classList.toggle("valid",okOdds)
-  oddsEl.classList.toggle("invalid",!okOdds&&oddsEl.value.trim()!=='')
-
-  if(!okWin||!okOdds){
-    $("stakeOut").textContent="—";$("breakeven").textContent="—";$("rangeNote").textContent="Enter win amount and odds to view the ±100 window.";$("grid").innerHTML="";persist()
-    return
-  }
-  const win=readMoney(winEl)
-  $("stakeOut").textContent=fmtUSD(stakeForWin(o,win))
-  $("breakeven").textContent=fmtPct(americanToProb(o))
-  renderWindow(win,o)
-  persist()
+  const winEl=$("win"), oddsEl=$("odds");
+  const okWin=(maskMoney(winEl),readMoney(winEl)>0);
+  const o=readOdds(oddsEl), okOdds=isValidOdds(o);
+  oddsEl.classList.toggle("valid",okOdds); oddsEl.classList.toggle("invalid",!okOdds&&oddsEl.value.trim()!=="");
+  if(!okWin||!okOdds){$("stakeOut").textContent="—";$("breakeven").textContent="—";$("rangeNote").textContent="Enter win amount and odds to view the ±100 window.";$("grid").innerHTML="";return;}
+  const win=readMoney(winEl);
+  $("stakeOut").textContent=fmtUSD(stakeForWin(o,win));
+  $("breakeven").textContent=fmtPct(americanToProb(o));
+  renderWindow(win,o);
 }
-
 function windowBounds(odds){
-  if(odds<0){let s=odds-100,e=odds+100; e=Math.min(e,-100); if(s>e)s=e-100; return [s,e]}
-  else{let s=odds-100,e=odds+100; s=Math.max(s,100); if(s>e)e=s+100; return [s,e]}
+  if(odds<0){let s=odds-100,e=odds+100;e=Math.min(e,-100);if(s>e)s=e-100;return[s,e];}
+  else{let s=odds-100,e=odds+100;s=Math.max(s,100);if(s>e)e=s+100;return[s,e];}
 }
-
 function renderWindow(winAmt,odds){
-  const [start,end]=windowBounds(odds)
-  $("rangeNote").textContent=`Showing odds ${start}…${end} (step 1)`
-  const grid=$("grid"); grid.innerHTML=""
-  const frag=document.createDocumentFragment()
+  const [start,end]=windowBounds(odds);
+  $("rangeNote").textContent=`Showing odds ${start}…${end} (step 1)`;
+  const grid=$("grid"); grid.innerHTML="";
   for(let o=start;o<=end;o++){
-    if(Math.abs(o)<100) continue
-    const stake=stakeForWin(o,winAmt)
-    const row=document.createElement('div'); row.className='cell'; row.setAttribute('role','listitem')
-    const left=document.createElement('div'); left.className='odds'; left.textContent=String(o)
-    const right=document.createElement('div'); right.className='amt'; right.textContent=fmtUSD(stake)
-    row.appendChild(left); row.appendChild(right); frag.appendChild(row)
+    if(Math.abs(o)<100) continue;
+    const stake=stakeForWin(o,winAmt);
+    const row=document.createElement('div'); row.className='cell';
+    const left=document.createElement('div'); left.className='odds'; left.textContent=String(o);
+    const right=document.createElement('div'); right.className='amt'; right.textContent=fmtUSD(stake);
+    row.appendChild(left); row.appendChild(right); grid.appendChild(row);
   }
-  grid.appendChild(frag)
 }
-
-/***** State (URL + localStorage) *****/
-const KEY='stakeWin.state.v1'
-function persist(){
-  const state={win:readMoney($("win")),odds:readOdds($("odds"))}
-  try{localStorage.setItem(KEY,JSON.stringify(state))}catch{}
-  // update URL (no reload)
-  const params=new URLSearchParams(location.search)
-  state.win?params.set('win',state.win.toFixed(2)):params.delete('win')
-  Number.isFinite(state.odds)?params.set('odds',state.odds):params.delete('odds')
-  const q=params.toString(); history.replaceState(null,'',q?`?${q}`:location.pathname)
-}
-function restore(){
-  const params=new URLSearchParams(location.search)
-  const ls=(()=>{try{return JSON.parse(localStorage.getItem(KEY)||'null')}catch{return null}})()
-  const win=params.get('win')??(ls&&ls.win)
-  const odds=params.get('odds')??(ls&&ls.odds)
-  if(win){$("win").value=USD.format(parseFloat(win))}
-  if(odds){$("odds").value=String(odds)}
-}
-
-/***** Controls *****/
-function nudge(delta){
-  const el=$("odds");
-  const v=readOdds(el);
-  if(!Number.isFinite(v)){toast('Enter odds first');return}
-  let next=v+delta; // simple arithmetic
-  // enforce |odds| >= 100 and correct sign if we cross 0
-  if(v>0){ if(next<100) next=100; }
-  else { if(next>-100) next=-100; }
-  el.value=String(next);
-  renderMain();
-}
-  const sign=v>0?1:-1
-  let next=v+delta*sign // keep sign consistent when nudging
-  if(Math.abs(next)<100){next=sign*100}
-  el.value=String(next)
-  renderMain()
-}
-
 function init(){
-  restore()
-  if(!$("win").value) $("win").value="$0.00"
-
-  ["win","odds"].forEach(id=>$(id).addEventListener("input",renderMain))
-
-  // (Removed restrictive beforeinput filter to avoid iOS key issues).addEventListener('beforeinput',e=>{
-    if(e.data && !/[0-9+-]/.test(e.data)) e.preventDefault()
-  })
-
-  $("toggleOdds").addEventListener("click",()=>{
-    const el=$("odds");
-    if(!el.value){toast('Enter odds first');return}
-    const v=readOdds(el);
-    if(!Number.isFinite(v)){toast('Invalid odds');return}
-    const flipped = -v;
-    // clamp to valid American odds domain
-    if(Math.abs(flipped)<100){ el.value = flipped<0?'-100':'100'; }
-    else { el.value = String(flipped); }
-    renderMain();
-  })=>{
-    const el=$("odds"); if(!el.value){toast('Enter odds first');return}
-    el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value)
-    renderMain()
-  })
-  $("incOdds").addEventListener('click',()=>nudge(+1))=>nudge(+1))
-  $("decOdds").addEventListener('click',()=>nudge(-1))=>nudge(-1))
-
-  // keyboard nudges
-  $("odds").addEventListener('keydown',e=>{
-    if(e.key==='ArrowUp'){e.preventDefault();nudge(+1)}
-    if(e.key==='ArrowDown'){e.preventDefault();nudge(-1)}
-  })
-
-  // copy + share
-  $("copyStake").addEventListener('click',async()=>{
-    const txt=$("stakeOut").textContent||''
-    if(txt==='—'){toast('Nothing to copy');return}
-    try{await navigator.clipboard.writeText(txt);toast('Copied')}catch{toast('Copy failed')}
-  })
-  $("shareLink").addEventListener('click',async()=>{
-    try{await navigator.share?navigator.share({title:document.title,url:location.href}):navigator.clipboard.writeText(location.href);toast('Link ready')}
-    catch{toast('Share canceled')}
-  })
-
-  renderMain()
-  if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{})}
+  $("win").value="$0.00"; $("odds").value="";
+  ["win","odds"].forEach(id=>$(id).addEventListener("input",renderMain));
+  $("toggleOdds").addEventListener("click",()=>{const el=$("odds");if(!el.value)return;el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value);renderMain();});
+  renderMain();
+  if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{});}
 }
-
-document.readyState==="loading"?document.addEventListener("DOMContentLoaded",init):init()
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 </script>
 </body>
 </html>
