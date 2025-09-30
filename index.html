@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Odds Calc — Stake Window (Build-Moondancer)</title>
+  <title>Odds Calc — Stake Window (Build-Vermithor)</title>
   <meta name="theme-color" content="#5A1414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,73 +11,41 @@
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/favicon.ico">
   <style>
-    :root{
-      --bg:#0b1118;--fg:#eef1f5;--muted:#9aa4b2;--card:#0f172a;--border:#1c2234;
-      --ok:#22c55e;--btn:#0b1324
-    }
+    :root{ --bg:#0b1118; --fg:#eef1f5; --muted:#9aa4b2; --card:#0f172a; --border:#1c2234; --ok:#22c55e; --btn:#0b1324 }
     *{box-sizing:border-box}
-    html,body{
-      margin:0;background:var(--bg);color:var(--fg);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-    }
-    .wrap{
-      max-width:560px;width:100%;margin:0 auto;
-      padding:calc(10px + env(safe-area-inset-top))
-              calc(12px + env(safe-area-inset-right))
-              calc(10px + env(safe-area-inset-bottom))
-              calc(12px + env(safe-area-inset-left));
-      display:grid;row-gap:8px;
-      grid-template-rows:auto auto auto auto;
-    }
-    h1{margin:0 0 2px;font-size:16px}
-    .muted{color:var(--muted)} .small{font-size:11px}
+    html,body{ margin:0; background:var(--bg); color:var(--fg); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif }
+    .wrap{ max-width:560px; width:100%; margin:0 auto; padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left)); display:grid; row-gap:8px; grid-template-rows:auto auto auto auto }
+    h1{ margin:0 0 2px; font-size:16px }
+    .muted{ color:var(--muted) } .small{ font-size:11px }
 
-    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px}
-    .row{display:flex;gap:8px;align-items:center}
-    .col{flex:1}
-    label{display:block;margin-bottom:4px;color:var(--muted);font-size:12px}
-    .field{position:relative}
-    input[type=text]{width:100%;background:#0a1324;border:1px solid var(--border);border-radius:8px;color:var(--fg);
-      padding:8px 10px;font-size:15px;outline:none;-webkit-appearance:none}
-    input[type=text]:focus{border-color:#31405e;box-shadow:0 0 0 2px #31405e55}
-    .valid{border-color:var(--ok)} .invalid{border-color:#ef4444}
-    button{border:1px solid var(--border);background:var(--btn);color:var(--fg);border-radius:8px;padding:8px 10px;font-size:14px}
-    .result{display:flex;justify-content:space-between;gap:8px;padding:6px 8px;background:#0c1428;border:1px solid var(--border);border-radius:8px;font-variant-numeric:tabular-nums}
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; display:flex; flex-direction:column; gap:8px }
+    .row{ display:flex; gap:8px; align-items:center }
+    .col{ flex:1 }
+    label{ display:block; margin-bottom:4px; color:var(--muted); font-size:12px }
+    .field{ position:relative }
+    input[type=text]{ width:100%; background:#0a1324; border:1px solid var(--border); border-radius:8px; color:var(--fg); padding:8px 10px; font-size:15px; outline:none; -webkit-appearance:none }
+    input[type=text]:focus{ border-color:#31405e; box-shadow:0 0 0 2px #31405e55 }
+    .valid{ border-color:var(--ok) } .invalid{ border-color:#ef4444 }
+    button{ border:1px solid var(--border); background:var(--btn); color:var(--fg); border-radius:8px; padding:8px 10px; font-size:14px }
+    .btnRow{ display:flex; gap:6px }
+    .result{ display:flex; justify-content:space-between; gap:8px; padding:6px 8px; background:#0c1428; border:1px solid var(--border); border-radius:8px; font-variant-numeric:tabular-nums }
 
     /* Bottom chart: vertical scroll with sticky header */
-    .chartCard{padding:0;overflow:hidden}
-    .chartHeader{
-      position:sticky; top:0; z-index:2;
-      display:flex;justify-content:space-between;align-items:center;
-      padding:10px; background:#0f172a; border-bottom:1px solid var(--border);
-      font-size:12px; color:var(--muted);
-    }
-    .subhead{
-      position:sticky; top:36px; z-index:2;
-      padding:6px 10px; background:#0f172a; border-bottom:1px dashed var(--border);
-      font-size:11px; color:var(--muted);
-    }
-    .scrollY{
-      max-height:56vh;               /* vertical scroll area size */
-      overflow-y:auto; -webkit-overflow-scrolling:touch;
-      padding:8px 10px 10px 10px;
-    }
-    .cell{
-      display:flex;justify-content:space-between;align-items:center;
-      padding:6px 8px; margin-bottom:6px;
-      border:1px solid var(--border); border-radius:8px;
-      background:#0c1428; font-variant-numeric:tabular-nums; line-height:1.1; font-size:11px;
-    }
-    .odds{color:var(--muted)}
-    .amt{font-weight:700;color:var(--ok);white-space:nowrap}
-    footer{font-size:10.5px;color:var(--muted);text-align:center;padding:2px 0 4px}
+    .chartCard{ padding:0; overflow:hidden }
+    .chartHeader{ position:sticky; top:0; z-index:2; display:flex; justify-content:space-between; align-items:center; padding:10px; background:#0f172a; border-bottom:1px solid var(--border); font-size:12px; color:var(--muted) }
+    .subhead{ position:sticky; top:36px; z-index:2; padding:6px 10px; background:#0f172a; border-bottom:1px dashed var(--border); font-size:11px; color:var(--muted) }
+    .scrollY{ max-height:56vh; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:8px 10px 10px 10px }
+    .cell{ display:flex; justify-content:space-between; align-items:center; padding:6px 8px; margin-bottom:6px; border:1px solid var(--border); border-radius:8px; background:#0c1428; font-variant-numeric:tabular-nums; line-height:1.1; font-size:11px }
+    .odds{ color:var(--muted) }
+    .amt{ font-weight:700; color:var(--ok); white-space:nowrap }
+    footer{ font-size:10.5px; color:var(--muted); text-align:center; padding:2px 0 4px }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <h1>Stake Window</h1>
-      <div class="muted small">Build-Moondancer 🔥🐉• Enter desired win + odds → stakes</div>
+      <div class="muted small">Build-Vermithor 🔥🐉 • Enter desired win + odds → stakes</div>
     </header>
 
     <!-- Inputs -->
@@ -99,7 +67,11 @@
         </div>
         <div>
           <label class="small muted">&nbsp;</label>
-          <button id="toggleOdds" type="button" title="Flip sign">±</button>
+          <div class="btnRow">
+            <button id="minusOne" type="button" title="-1">−1</button>
+            <button id="plusOne" type="button" title="+1">+1</button>
+            <button id="toggleOdds" type="button" title="Flip sign">±</button>
+          </div>
         </div>
       </div>
       <div class="result"><div>Required Stake</div><div id="stakeOut">—</div></div>
@@ -119,58 +91,118 @@
     </section>
 
     <footer>
-      Built by <strong>Bryan Randol</strong> • <strong>Build-Moondancer</strong>
+      Built by <strong>Bryan Randol</strong> • <strong>Build-Vermithor</strong>
     </footer>
   </div>
 
 <script>
-const USD=new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2,maximumFractionDigits:2});
-const fmtUSD=n=>USD.format(n);
-const fmtPct=p=>isFinite(p)?(p*100).toFixed(2)+"%":"—";
-const readMoney=el=>{const d=(el.value.match(/\d+/g)||[]).join("");return d===""?0:parseInt(d,10)/100;};
-function maskMoney(el){const d=(el.value.match(/\d+/g)||[]).join("");const c=d===""?0:parseInt(d,10);el.value=USD.format((isNaN(c)?0:c)/100);}
-function readOdds(el){const t=(el.value||"").trim();if(!/^[+-]?\d+$/.test(t))return NaN;return Number(t);}
-const isValidOdds=n=>Number.isFinite(n)&&Math.abs(n)>=100;
-const americanToProb=o=>(!Number.isFinite(o)||o===0)?NaN:(o>0?100/(o+100):Math.abs(o)/(Math.abs(o)+100));
-const stakeForWin=(o,w)=>(!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN:(o>0?(w*100)/o:(w*Math.abs(o))/100);
-const $=id=>document.getElementById(id);
+// ===== Formatting & math helpers =====
+const USD = new Intl.NumberFormat('en-US',{ style:'currency', currency:'USD', minimumFractionDigits:2, maximumFractionDigits:2 });
+const fmtUSD = n => USD.format(n);
+const fmtPct = p => (Number.isFinite(p)? (p*100).toFixed(2)+"%" : "—");
 
+// Money mask with caret preservation (iOS-safe)
+function readMoney(el){
+  const digits = (el.value.match(/\d+/g)||[]).join("");
+  return digits==="" ? 0 : parseInt(digits,10)/100;
+}
+function maskMoneyCareful(el){
+  const selEndFromRight = el.value.length - el.selectionEnd;
+  const digits = (el.value.match(/\d+/g)||[]).join("");
+  const cents = digits==="" ? 0 : parseInt(digits,10);
+  const next = USD.format((isNaN(cents)?0:cents)/100);
+  el.value = next;
+  // Restore caret near end; best effort on iOS
+  const pos = Math.max(0, el.value.length - selEndFromRight);
+  requestAnimationFrame(()=>{ try{ el.setSelectionRange(pos,pos); }catch(_){} });
+}
+
+// Odds parsing/validation
+function readOdds(el){
+  const t = (el.value||"").trim();
+  if(!/^[-+]?\d+$/.test(t)) return NaN;
+  return Number(t);
+}
+const isValidOdds = n => Number.isFinite(n) && Math.abs(n)>=100;
+const americanToProb = o => (!Number.isFinite(o)||o===0)?NaN:(o>0? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
+const stakeForWin = (o,w) => (!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN:(o>0? (w*100)/o : (w*Math.abs(o))/100);
+const $ = id => document.getElementById(id);
+
+// Render core
 function renderMain(){
   const winEl=$("win"), oddsEl=$("odds");
-  const okWin=(maskMoney(winEl),readMoney(winEl)>0);
-  const o=readOdds(oddsEl), okOdds=isValidOdds(o);
-  oddsEl.classList.toggle("valid",okOdds); oddsEl.classList.toggle("invalid",!okOdds&&oddsEl.value.trim()!=="");
-  if(!okWin||!okOdds){$("stakeOut").textContent="—";$("breakeven").textContent="—";$("rangeNote").textContent="Enter win amount and odds to view the ±100 window.";$("grid").innerHTML="";return;}
-  const win=readMoney(winEl);
-  $("stakeOut").textContent=fmtUSD(stakeForWin(o,win));
-  $("breakeven").textContent=fmtPct(americanToProb(o));
+  maskMoneyCareful(winEl);
+  const win = readMoney(winEl);
+  const o = readOdds(oddsEl);
+  const okWin = win>0, okOdds = isValidOdds(o);
+  oddsEl.classList.toggle("valid", okOdds);
+  oddsEl.classList.toggle("invalid", !okOdds && oddsEl.value.trim()!="");
+  if(!okWin || !okOdds){
+    $("stakeOut").textContent = "—";
+    $("breakeven").textContent = "—";
+    $("rangeNote").textContent = "Enter win amount and odds to view the ±100 window.";
+    $("grid").innerHTML = "";
+    return;
+  }
+  $("stakeOut").textContent = fmtUSD(stakeForWin(o,win));
+  $("breakeven").textContent = fmtPct(americanToProb(o));
   renderWindow(win,o);
 }
+
 function windowBounds(odds){
-  if(odds<0){let s=odds-100,e=odds+100;e=Math.min(e,-100);if(s>e)s=e-100;return[s,e];}
-  else{let s=odds-100,e=odds+100;s=Math.max(s,100);if(s>e)e=s+100;return[s,e];}
+  if(odds<0){ let s=odds-100, e=odds+100; e=Math.min(e,-100); if(s>e) s=e-100; return [s,e]; }
+  else{ let s=odds-100, e=odds+100; s=Math.max(s,100); if(s>e) e=s+100; return [s,e]; }
 }
+
 function renderWindow(winAmt,odds){
   const [start,end]=windowBounds(odds);
-  $("rangeNote").textContent=`Showing odds ${start}…${end} (step 1)`;
-  const grid=$("grid"); grid.innerHTML="";
+  $("rangeNote").textContent = `Showing odds ${start}…${end} (step 1)`;
+  const grid=$("grid");
+  grid.innerHTML="";
+  const frag=document.createDocumentFragment();
   for(let o=start;o<=end;o++){
-    if(Math.abs(o)<100) continue;
+    if(Math.abs(o)<100) continue; // guard
     const stake=stakeForWin(o,winAmt);
     const row=document.createElement('div'); row.className='cell';
     const left=document.createElement('div'); left.className='odds'; left.textContent=String(o);
     const right=document.createElement('div'); right.className='amt'; right.textContent=fmtUSD(stake);
-    row.appendChild(left); row.appendChild(right); grid.appendChild(row);
+    row.appendChild(left); row.appendChild(right); frag.appendChild(row);
   }
+  grid.appendChild(frag);
 }
-function init(){
-  $("win").value="$0.00"; $("odds").value="";
-  ["win","odds"].forEach(id=>$(id).addEventListener("input",renderMain));
-  $("toggleOdds").addEventListener("click",()=>{const el=$("odds");if(!el.value)return;el.value=el.value.startsWith("-")?el.value.slice(1):(el.value.startsWith("+")?"-"+el.value.slice(1):"-"+el.value);renderMain();});
+
+function nudgeOdds(delta){
+  const el=$("odds");
+  const n=readOdds(el);
+  if(!Number.isFinite(n)) return; // ignore if invalid
+  const next = n+delta;
+  if(Math.abs(next)<100) return; // keep within valid odds
+  el.value = (next>0? "+"+next : String(next));
   renderMain();
-  if('serviceWorker'in navigator){navigator.serviceWorker.register('service-worker.js').catch(()=>{});}
 }
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+
+function init(){
+  $("win").value = "$0.00";
+  $("odds").value = "";
+  ["win","odds"].forEach(id=>$(id).addEventListener("input", renderMain, {passive:true}));
+  $("odds").addEventListener("keydown", (e)=>{
+    if(e.key==="ArrowUp"){ e.preventDefault(); nudgeOdds(+1); }
+    else if(e.key==="ArrowDown"){ e.preventDefault(); nudgeOdds(-1); }
+  });
+  $("plusOne").addEventListener("click", ()=>nudgeOdds(+1));
+  $("minusOne").addEventListener("click", ()=>nudgeOdds(-1));
+  $("toggleOdds").addEventListener("click", ()=>{
+    const el=$("odds");
+    if(!el.value) return;
+    if(/^\+/.test(el.value)) el.value = el.value.replace(/^\+/, "-");
+    else if(/^\-/.test(el.value)) el.value = el.value.replace(/^\-/, "+");
+    else el.value = (el.value.startsWith("-")? el.value.slice(1) : "-"+el.value);
+    renderMain();
+  });
+  renderMain();
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init); else init();
 </script>
 </body>
 </html>
