@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Odds Calc — Stake Window (Build-Vhagar 🔥🐉)</title>
+  <title>Odds Calc — Stake Window (Build-Caraxes 🔥🐉)</title>
   <meta name="theme-color" content="#5A1414">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -56,13 +56,20 @@
     .modalContent{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; max-width:400px; width:90% }
     .modalContent textarea{ width:100%; height:80px; background:#0a1324; border:1px solid var(--border); border-radius:8px; color:var(--fg); padding:8px; font-size:14px }
     .modalActions{ display:flex; gap:8px; margin-top:12px; justify-content:flex-end }
+
+    .historySection{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px; margin-top:8px }
+    .historySection h2{ font-size:14px; margin:0 0 8px; color:var(--fg) }
+    .historyList{ display:flex; flex-direction:column; gap:6px }
+    .historyItem{ background:#0a1324; border:1px solid var(--border); border-radius:8px; padding:8px; font-size:12px; color:var(--fg); cursor:pointer; text-align:left }
+    .historyItem:hover, .historyItem:focus{ border-color:var(--ok); color:var(--ok) }
+    .historyActions{ display:flex; gap:8px; margin-top:6px; justify-content:flex-end }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <h1>Stake Window</h1>
-      <div class="muted small">Build-Vhagar 🔥🐉 • Enter desired win + odds → stakes</div>
+      <div class="muted small">Build-Caraxes 🔥🐉 • Enter desired win + odds → stakes</div>
     </header>
 
     <!-- Inputs -->
@@ -102,10 +109,18 @@
         <div id="payoutOut" class="mutedAmt">—</div>
         <div id="breakeven" class="breakevenSmall">Implied win probability <span class="infoIcon" title="This is the implied probability of winning at the entered odds (100/(odds+100) for positive odds, |odds|/(|odds|+100) for negative odds).">&#9432;</span>: <span id="probValue">—</span> <span id="favType"></span></div>
       </div>
+      <!-- Recent Calculations History -->
+      <section class="historySection" id="historySection">
+        <h2>Recent Calculations</h2>
+        <div class="historyList" id="historyList"></div>
+        <div class="historyActions">
+          <button type="button" id="clearHistory" class="linkBtn" aria-label="Clear calculation history">Clear History</button>
+        </div>
+      </section>
     </section>
 
     <footer>
-      Built by <strong>Bryan Randol</strong> • <strong>Build-Vhagar 🔥🐉</strong>
+      Built by <strong>Bryan Randol</strong> • <strong>Build-Caraxes 🔥🐉</strong>
     </footer>
   </div>
 
@@ -144,7 +159,7 @@ function formatMoneyInput(el) {
   const newLength = formatted.length;
   let newCursorPos = cursorPos + (newLength - oldLength);
 
-  // Ensure cursor doesn't move to the start or before $
+  // Ensure cursor doesn't move before $
   if (formatted.startsWith('$')) {
     newCursorPos = Math.max(1, newCursorPos);
   }
@@ -180,6 +195,67 @@ function debounce(fn, ms) {
     clearTimeout(timeout);
     timeout = setTimeout(() => fn(...args), ms);
   };
+}
+
+// History management
+const HISTORY_KEY = 'stakeWinHistory:v1';
+const MAX_HISTORY = 5;
+let isUserInitiated = true; // Track if input change is user-initiated
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(0, MAX_HISTORY).filter(item => 
+      Number.isFinite(item.win) && Number.isFinite(item.odds) && 
+      Number.isFinite(item.stake) && Number.isFinite(item.payout)
+    );
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(entry) {
+  if (!isUserInitiated) return; // Only save if user-initiated
+  const history = loadHistory();
+  history.unshift(entry);
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+  } catch {}
+}
+
+function clearHistory() {
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+  } catch {}
+  renderHistory();
+}
+
+function renderHistory() {
+  const wrap = $("historyList");
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  const history = loadHistory();
+  if (history.length === 0) {
+    wrap.innerHTML = '<div class="small muted">No recent calculations</div>';
+    return;
+  }
+  history.forEach((item, index) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'historyItem';
+    b.textContent = `Win: ${fmtUSD(item.win)}, Odds: ${item.odds > 0 ? '+' : ''}${item.odds} → Stake: ${fmtUSD(item.stake)}, Payout: ${fmtUSD(item.payout)}`;
+    b.setAttribute('aria-label', `Reapply calculation: Win ${fmtUSD(item.win)}, Odds ${item.odds}`);
+    b.addEventListener('click', () => {
+      isUserInitiated = false; // Prevent history update
+      $("win").value = fmtUSD(item.win);
+      $("odds").value = item.odds > 0 ? `+${item.odds}` : `${item.odds}`;
+      debouncedUpdateUI();
+    });
+    wrap.appendChild(b);
+  });
 }
 
 function updateUI() {
@@ -229,14 +305,25 @@ function updateUI() {
   }
 
   // Stake and payout
-  $("stakeOut").textContent = (okWin && okOdds) ? fmtUSD(stakeForWin(o, win)) : "—";
-  $("payoutOut").textContent = (okWin && okOdds) ? fmtUSD(payoutForWin(o, win)) : "—";
+  const stake = stakeForWin(o, win);
+  const payout = payoutForWin(o, win);
+  $("stakeOut").textContent = (okWin && okOdds) ? fmtUSD(stake) : "—";
+  $("payoutOut").textContent = (okWin && okOdds) ? fmtUSD(payout) : "—";
+
+  // Save to history if valid and user-initiated
+  if (okWin && okOdds) {
+    saveHistory({ win, odds: o, stake, payout });
+    renderHistory();
+  }
 
   // Animate result box
   if (okWin && okOdds) {
     resultBox.classList.add("updated");
     setTimeout(() => resultBox.classList.remove("updated"), 200);
   }
+
+  // Reset isUserInitiated after processing
+  isUserInitiated = true;
 }
 
 const debouncedUpdateUI = debounce(updateUI, 100);
@@ -248,19 +335,25 @@ function init() {
 
   // Handle win input: format as money in real-time (cents-based)
   winEl.addEventListener("input", (e) => {
+    isUserInitiated = true;
     formatMoneyInput(e.target);
     debouncedUpdateUI();
   }, { passive: true });
   winEl.addEventListener("blur", () => {
+    isUserInitiated = true;
     formatMoneyInput(winEl); // Ensure formatting on blur
     debouncedUpdateUI();
   });
 
   // Odds input updates UI
-  oddsEl.addEventListener("input", debouncedUpdateUI, { passive: true });
+  oddsEl.addEventListener("input", () => {
+    isUserInitiated = true;
+    debouncedUpdateUI();
+  }, { passive: true });
 
   // Flip odds sign
   $("toggleOdds").addEventListener("click", () => {
+    isUserInitiated = true;
     const n = readOdds(oddsEl);
     if (!Number.isFinite(n)) return;
     const flipped = -n;
@@ -270,10 +363,20 @@ function init() {
 
   // Clear inputs
   $("clearInputs").addEventListener("click", () => {
+    isUserInitiated = true;
     winEl.value = "$0.00";
     oddsEl.value = "";
     debouncedUpdateUI();
   });
+
+  // Clear history
+  $("clearHistory").addEventListener("click", () => {
+    isUserInitiated = true;
+    clearHistory();
+  });
+
+  // Initial render of history
+  renderHistory();
 
   debouncedUpdateUI();
 
@@ -303,6 +406,7 @@ function init() {
       b.textContent = USD.format(val);
       b.setAttribute('aria-label', `Set desired win to ${USD.format(val)}`);
       b.addEventListener('click', () => {
+        isUserInitiated = true;
         $("win").value = USD.format(val);
         debouncedUpdateUI();
       });
@@ -314,12 +418,17 @@ function init() {
   // Modal for editing presets
   const modal = $("presetModal"), modalInput = $("presetInput"), modalSave = $("modalSave"), modalCancel = $("modalCancel");
   $("editPresets").addEventListener('click', () => {
+    isUserInitiated = true;
     modalInput.value = loadPresets().join(', ');
     modal.classList.add('open');
     modalInput.focus();
   });
-  modalCancel.addEventListener('click', () => modal.classList.remove('open'));
+  modalCancel.addEventListener('click', () => {
+    isUserInitiated = true;
+    modal.classList.remove('open');
+  });
   modalSave.addEventListener('click', () => {
+    isUserInitiated = true;
     const next = modalInput.value;
     const arr = next.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => Number.isFinite(n) && n > 0).map(n => Math.round(n * 100) / 100).slice(0, 12);
     if (arr.length === 0) return;
@@ -328,7 +437,11 @@ function init() {
     modal.classList.remove('open');
   });
 
-  $("resetPresets").addEventListener('click', () => { savePresets(DEFAULT_PRESETS); renderPresets(); });
+  $("resetPresets").addEventListener('click', () => {
+    isUserInitiated = true;
+    savePresets(DEFAULT_PRESETS);
+    renderPresets();
+  });
 
   if ('serviceWorker' in navigator) { navigator.serviceWorker.register('service-worker.js').catch(() => {}); }
 }
