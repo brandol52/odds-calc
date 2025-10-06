@@ -1,10 +1,3 @@
-<!--
-  Odds Calc — Stake Window
-  Build: Vhagar 🔥🐉
-  Date: 2025-09-30
-  Author: Bryan Randol
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -30,15 +23,18 @@
     .col{ flex:1 }
     label{ display:block; margin-bottom:4px; color:var(--muted); font-size:12px }
     .field{ position:relative }
-    input[type=text]{ width:100%; background:#0a1324; border:1px solid var(--border); border-radius:8px; color:var(--fg); padding:8px 10px; font-size:15px; outline:none; -webkit-appearance:none }
+    input[type=text]{ width:100%; background:#0a1324; border:1px solid var(--border); border-radius:8px; color:var(--fg); padding:8px 10px; font-size:15px; outline:none; -webkit-appearance:none; text-align:left }
     input[type=text]:focus{ border-color:#31405e; box-shadow:0 0 0 2px #31405e55 }
     .valid{ border-color:var(--ok) } .invalid{ border-color:#ef4444 }
     .err{ color:#ef4444; font-size:11px; margin-top:4px }
-    button{ border:1px solid var(--border); background:var(--btn); color:var(--fg); border-radius:8px; padding:8px 10px; font-size:14px }
+    button{ border:1px solid var(--border); background:var(--btn); color:var(--fg); border-radius:8px; padding:8px 10px; font-size:14px; cursor:pointer }
+    button:focus{ outline:2px solid #31405e }
 
-    .resultBox{ display:flex; flex-direction:column; gap:6px; padding:12px; background:#0c1428; border:1px solid var(--border); border-radius:12px; align-items:center; }
+    .resultBox{ display:flex; flex-direction:column; gap:6px; padding:12px; background:#0c1428; border:1px solid var(--border); border-radius:12px; align-items:center; transition:background 0.2s ease }
+    .resultBox.updated{ background:#1a2238 }
     .resultBox label{ font-size:12px; color:var(--muted); margin-bottom:4px }
     .amtLarge{ font-size:24px; font-weight:800; color:var(--ok); text-align:center }
+    .mutedAmt{ font-size:18px; font-weight:600; color:var(--muted); text-align:center }
     .breakevenSmall{ font-size:12px; color:var(--muted); text-align:center }
 
     input.valid:focus{ border-color:var(--ok); box-shadow:0 0 0 2px rgba(34,197,94,.3) }
@@ -50,10 +46,16 @@
     footer{ font-size:10.5px; color:var(--muted); text-align:center; padding:2px 0 4px }
     .quickBtns{ display:flex; flex-wrap:wrap; gap:6px; margin-top:6px }
     .quickWin{ flex:1 1 auto; background:#0a1324; border:1px solid var(--border); border-radius:6px; padding:4px 6px; font-size:12px; color:var(--fg); cursor:pointer }
-    .quickWin:hover{ border-color:var(--ok); color:var(--ok) }
+    .quickWin:hover, .quickWin:focus{ border-color:var(--ok); color:var(--ok) }
     .quickActions{ display:flex; gap:8px; margin-top:6px }
     .linkBtn{ background:transparent; border:none; color:var(--muted); font-size:11px; padding:0; cursor:pointer; text-decoration:underline }
-    .linkBtn:hover{ color:#fff }
+    .linkBtn:hover, .linkBtn:focus{ color:#fff }
+
+    .modal{ display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center }
+    .modal.open{ display:flex }
+    .modalContent{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; max-width:400px; width:90% }
+    .modalContent textarea{ width:100%; height:80px; background:#0a1324; border:1px solid var(--border); border-radius:8px; color:var(--fg); padding:8px; font-size:14px }
+    .modalActions{ display:flex; gap:8px; margin-top:12px; justify-content:flex-end }
   </style>
 </head>
 <body>
@@ -69,12 +71,14 @@
         <div class="col">
           <label for="win">Desired Win ($)</label>
           <div class="field">
-            <input id="win" type="text" inputmode="numeric" placeholder="$0.00" autocomplete="off" autocorrect="off" spellcheck="false">
+            <input id="win" type="text" inputmode="numeric" placeholder="$0.00" autocomplete="off" autocorrect="off" spellcheck="false" pattern="[0-9]*">
+            <div id="winErr" class="err" style="display:none" aria-live="polite">Win must be at least $0.01</div>
           </div>
           <div class="quickBtns" id="quickBtns"></div>
           <div class="quickActions">
-            <button type="button" id="editPresets" class="linkBtn">✎ Edit presets</button>
-            <button type="button" id="resetPresets" class="linkBtn">Reset</button>
+            <button type="button" id="editPresets" class="linkBtn" aria-label="Edit preset amounts">✎ Edit presets</button>
+            <button type="button" id="resetPresets" class="linkBtn" aria-label="Reset presets to default">Reset</button>
+            <button type="button" id="clearInputs" class="linkBtn" aria-label="Clear all inputs">Clear</button>
           </div>
         </div>
       </div>
@@ -82,18 +86,20 @@
         <div class="col">
           <label for="odds">American Odds</label>
           <div class="field">
-            <input id="odds" type="text" inputmode="numeric" placeholder="+150 or -120" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="6">
+            <input id="odds" type="text" inputmode="numeric" placeholder="+150 or -120" autocomplete="off" autocorrect="off" spellcheck="false" maxlength="6" pattern="[+-]?[0-9]+">
+            <div id="oddsErr" class="err" style="display:none" aria-live="polite">Invalid odds entered. (Must be at least ±100)</div>
           </div>
-          <div id="oddsErr" class="err" style="display:none" aria-live="polite">Invalid odds entered. (Must be at least +-100)</div>
         </div>
         <div>
           <label class="small muted">&nbsp;</label>
-          <button id="toggleOdds" type="button" title="Flip sign">±</button>
+          <button id="toggleOdds" type="button" title="Flip sign" aria-label="Toggle odds sign">±</button>
         </div>
       </div>
-      <div class="resultBox">
+      <div class="resultBox" id="resultBox">
         <label>Required Stake</label>
         <div id="stakeOut" class="amtLarge">—</div>
+        <label>Potential Payout</label>
+        <div id="payoutOut" class="mutedAmt">—</div>
         <div id="breakeven" class="breakevenSmall">Implied win probability <span class="infoIcon" title="This is the implied probability of winning at the entered odds (100/(odds+100) for positive odds, |odds|/(|odds|+100) for negative odds).">&#9432;</span>: <span id="probValue">—</span> <span id="favType"></span></div>
       </div>
     </section>
@@ -103,71 +109,117 @@
     </footer>
   </div>
 
+  <!-- Modal for editing presets -->
+  <div id="presetModal" class="modal">
+    <div class="modalContent">
+      <label for="presetInput">Preset Amounts (comma-separated, e.g., 2.50, 5, 7.5)</label>
+      <textarea id="presetInput"></textarea>
+      <div class="modalActions">
+        <button type="button" id="modalCancel" class="linkBtn" aria-label="Cancel editing presets">Cancel</button>
+        <button type="button" id="modalSave" aria-label="Save preset amounts">Save</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 // ===== Formatting & math helpers =====
-const USD = new Intl.NumberFormat('en-US',{ style:'currency', currency:'USD', minimumFractionDigits:2, maximumFractionDigits:2 });
+const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtUSD = n => USD.format(n);
-const fmtPct = p => (Number.isFinite(p)? (p*100).toFixed(2)+"%" : "—");
+const fmtPct = p => (Number.isFinite(p) ? (p * 100).toFixed(2) + "%" : "—");
 
 // Money helpers
-function readMoney(el){
-  const digits = (el.value.match(/\d+/g)||[]).join("");
-  return digits==="" ? 0 : parseInt(digits,10)/100;
+function readMoney(el) {
+  const value = el.value.replace(/[^0-9]/g, '');
+  return value === "" ? 0 : parseInt(value, 10) / 100 || 0;
 }
-function maskMoneyCareful(el){
-  const hasSel = typeof el.selectionEnd === 'number';
-  const selEndFromRight = hasSel ? (el.value.length - el.selectionEnd) : 0;
-  const digits = (el.value.match(/\d+/g)||[]).join("");
-  const cents = digits==="" ? 0 : parseInt(digits,10);
-  const next = USD.format((isNaN(cents)?0:cents)/100);
-  el.value = next;
-  if(hasSel){
-    const pos = Math.max(0, el.value.length - selEndFromRight);
-    requestAnimationFrame(()=>{ try{ el.setSelectionRange(pos,pos); }catch(_){} });
+
+function formatMoneyInput(el) {
+  const cursorPos = el.selectionStart;
+  const rawValue = el.value.replace(/[^0-9]/g, ''); // Only digits
+  const numValue = rawValue === "" ? 0 : parseInt(rawValue, 10) / 100;
+  const formatted = USD.format(numValue);
+
+  // Adjust cursor position
+  const oldLength = el.value.length;
+  const newLength = formatted.length;
+  let newCursorPos = cursorPos + (newLength - oldLength);
+
+  // Ensure cursor doesn't move to the start or before $
+  if (formatted.startsWith('$')) {
+    newCursorPos = Math.max(1, newCursorPos);
   }
+
+  el.value = formatted;
+
+  // Set cursor position
+  try {
+    el.setSelectionRange(newCursorPos, newCursorPos);
+  } catch (_) {}
 }
 
 // Odds parsing/validation
-function readOdds(el){
-  const t = (el.value||"").trim();
-  if(!/^[-+]?\d+$/.test(t)) return NaN;
+function readOdds(el) {
+  const t = (el.value || "").trim();
+  if (!/^[+-]?\d+$/.test(t)) return NaN;
   return Number(t);
 }
-const isValidOdds = n => Number.isFinite(n) && Math.abs(n)>=100;
-const americanToProb = o => (!Number.isFinite(o)||o===0)?NaN:(o>0? 100/(o+100) : Math.abs(o)/(Math.abs(o)+100));
-const stakeForWin = (o,w) => (!Number.isFinite(o)||!Number.isFinite(w)||o===0)?NaN:(o>0? (w*100)/o : (w*Math.abs(o))/100);
+const isValidOdds = n => Number.isFinite(n) && Math.abs(n) >= 100;
+const isValidWin = n => Number.isFinite(n) && n >= 0.01;
+const americanToProb = o => (!Number.isFinite(o) || o === 0) ? NaN : (o > 0 ? 100 / (o + 100) : Math.abs(o) / (Math.abs(o) + 100));
+const stakeForWin = (o, w) => (!Number.isFinite(o) || !Number.isFinite(w) || o === 0) ? NaN : (o > 0 ? (w * 100) / o : (w * Math.abs(o)) / 100);
+const payoutForWin = (o, w) => {
+  const stake = stakeForWin(o, w);
+  return Number.isFinite(stake) ? stake + w : NaN;
+};
 const $ = id => document.getElementById(id);
 
-function updateUI(){
-  const winEl=$("win"), oddsEl=$("odds"), errEl=$("oddsErr");
+// Debounce utility
+function debounce(fn, ms) {
+  let timeout;
+  return (...args) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => fn(...args), ms);
+  };
+}
+
+function updateUI() {
+  const winEl = $("win"), oddsEl = $("odds"), winErrEl = $("winErr"), oddsErrEl = $("oddsErr"), resultBox = $("resultBox");
   const win = readMoney(winEl);
   const o = readOdds(oddsEl);
   const okOdds = isValidOdds(o);
-  const okWin = win>0;
+  const okWin = isValidWin(win);
 
-  const hasValue = oddsEl.value.trim() !== "";
-  oddsEl.classList.toggle("valid", hasValue && okOdds);
-  oddsEl.classList.toggle("invalid", hasValue && !okOdds);
-  oddsEl.setAttribute("aria-invalid", String(hasValue && !okOdds));
-  errEl.style.display = (hasValue && !okOdds) ? "block" : "none";
+  // Validate win
+  const hasWinValue = winEl.value.trim() !== "" && winEl.value !== "$0.00";
+  winEl.classList.toggle("valid", hasWinValue && okWin);
+  winEl.classList.toggle("invalid", hasWinValue && !okWin);
+  winEl.setAttribute("aria-invalid", String(hasWinValue && !okWin));
+  winErrEl.style.display = (hasWinValue && !okWin) ? "block" : "none";
+
+  // Validate odds
+  const hasOddsValue = oddsEl.value.trim() !== "";
+  oddsEl.classList.toggle("valid", hasOddsValue && okOdds);
+  oddsEl.classList.toggle("invalid", hasOddsValue && !okOdds);
+  oddsEl.setAttribute("aria-invalid", String(hasOddsValue && !okOdds));
+  oddsErrEl.style.display = (hasOddsValue && !okOdds) ? "block" : "none";
 
   // Probability & favorite/longshot classification
-  if(okOdds){
+  if (okOdds) {
     $("probValue").textContent = fmtPct(americanToProb(o));
     let type = '';
-    if(o === -100 || o === 100){
+    if (o === -100 || o === 100) {
       type = '(Even)';
-    } else if(o < -300){
+    } else if (o < -300) {
       type = '(Heavy Favorite)';
-    } else if(o < -150){
+    } else if (o < -150) {
       type = '(Favorite)';
-    } else if(o < -100){
+    } else if (o < -100) {
       type = '(Slight Favorite)';
-    } else if(o > 300){
+    } else if (o > 300) {
       type = '(Lottery Ticket Play)';
-    } else if(o > 200){
+    } else if (o > 200) {
       type = '(Longshot)';
-    } else if(o > 100){
+    } else if (o > 100) {
       type = '(Slight Longshot)';
     }
     $("favType").textContent = type;
@@ -176,77 +228,111 @@ function updateUI(){
     $("favType").textContent = '';
   }
 
-  // Stake requires both a positive win amount and valid odds
-  $("stakeOut").textContent = (okWin && okOdds) ? fmtUSD(stakeForWin(o,win)) : "—";
+  // Stake and payout
+  $("stakeOut").textContent = (okWin && okOdds) ? fmtUSD(stakeForWin(o, win)) : "—";
+  $("payoutOut").textContent = (okWin && okOdds) ? fmtUSD(payoutForWin(o, win)) : "—";
+
+  // Animate result box
+  if (okWin && okOdds) {
+    resultBox.classList.add("updated");
+    setTimeout(() => resultBox.classList.remove("updated"), 200);
+  }
 }
 
-function init(){
-  const winEl=$("win"), oddsEl=$("odds");
+const debouncedUpdateUI = debounce(updateUI, 100);
+
+function init() {
+  const winEl = $("win"), oddsEl = $("odds");
   winEl.value = "$0.00";
   oddsEl.value = "";
 
-  // Mask money on each input, then update UI
-  winEl.addEventListener("input", ()=>{ maskMoneyCareful(winEl); updateUI(); }, {passive:true});
-  winEl.addEventListener("blur", ()=>{ maskMoneyCareful(winEl); });
-
-  // Odds input just updates UI
-  oddsEl.addEventListener("input", updateUI, {passive:true});
-
-  // Flip odds sign using numeric parse → string with explicit sign
-  $("toggleOdds").addEventListener("click", ()=>{
-    const n = readOdds(oddsEl);
-    if(!Number.isFinite(n)) return;
-    const flipped = -n;
-    oddsEl.value = (flipped>0? "+"+flipped : String(flipped));
-    updateUI();
+  // Handle win input: format as money in real-time (cents-based)
+  winEl.addEventListener("input", (e) => {
+    formatMoneyInput(e.target);
+    debouncedUpdateUI();
+  }, { passive: true });
+  winEl.addEventListener("blur", () => {
+    formatMoneyInput(winEl); // Ensure formatting on blur
+    debouncedUpdateUI();
   });
 
-  updateUI();
+  // Odds input updates UI
+  oddsEl.addEventListener("input", debouncedUpdateUI, { passive: true });
+
+  // Flip odds sign
+  $("toggleOdds").addEventListener("click", () => {
+    const n = readOdds(oddsEl);
+    if (!Number.isFinite(n)) return;
+    const flipped = -n;
+    oddsEl.value = (flipped > 0 ? "+" + flipped : String(flipped));
+    debouncedUpdateUI();
+  });
+
+  // Clear inputs
+  $("clearInputs").addEventListener("click", () => {
+    winEl.value = "$0.00";
+    oddsEl.value = "";
+    debouncedUpdateUI();
+  });
+
+  debouncedUpdateUI();
 
   // ---- Presets (localStorage) ----
   const PRESET_KEY = 'stakeWinPresets:v1';
-  const DEFAULT_PRESETS = [2.50,5.00,7.50,12.50,15.00,25.00];
+  const DEFAULT_PRESETS = [2.50, 5.00, 7.50, 12.50, 15.00, 25.00];
 
-  function loadPresets(){
-    try{
+  function loadPresets() {
+    try {
       const raw = localStorage.getItem(PRESET_KEY);
-      if(!raw) return DEFAULT_PRESETS.slice();
+      if (!raw) return DEFAULT_PRESETS.slice();
       const arr = JSON.parse(raw);
-      if(!Array.isArray(arr)) return DEFAULT_PRESETS.slice();
-      return arr.map(Number).filter(n => Number.isFinite(n) && n>0).slice(0,12);
-    }catch{ return DEFAULT_PRESETS.slice(); }
+      if (!Array.isArray(arr)) return DEFAULT_PRESETS.slice();
+      return arr.map(Number).filter(n => Number.isFinite(n) && n > 0).slice(0, 12);
+    } catch { return DEFAULT_PRESETS.slice(); }
   }
-  function savePresets(arr){ try{ localStorage.setItem(PRESET_KEY, JSON.stringify(arr)); }catch{} }
-  function renderPresets(){
+  function savePresets(arr) { try { localStorage.setItem(PRESET_KEY, JSON.stringify(arr)); } catch {} }
+  function renderPresets() {
     const wrap = $("quickBtns");
-    if(!wrap) return;
+    if (!wrap) return;
     wrap.innerHTML = '';
     const presets = loadPresets();
-    presets.forEach(val=>{
-      const b=document.createElement('button');
-      b.type='button'; b.className='quickWin';
-      b.dataset.val=Number(val).toFixed(2);
+    presets.forEach(val => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'quickWin';
+      b.dataset.val = Number(val).toFixed(2);
       b.textContent = USD.format(val);
-      b.addEventListener('click', ()=>{ $("win").value = USD.format(val); updateUI(); });
+      b.setAttribute('aria-label', `Set desired win to ${USD.format(val)}`);
+      b.addEventListener('click', () => {
+        $("win").value = USD.format(val);
+        debouncedUpdateUI();
+      });
       wrap.appendChild(b);
     });
   }
   renderPresets();
 
-  $("editPresets").addEventListener('click', ()=>{
-    const curr = loadPresets().join(', ');
-    const next = prompt('Enter preset amounts separated by commas (e.g., 2.50, 5, 7.5, 12.5):', curr);
-    if(next==null) return;
-    const arr = next.split(',').map(s=>s.trim()).filter(Boolean).map(Number).filter(n=>Number.isFinite(n)&&n>0).map(n=>Math.round(n*100)/100).slice(0,12);
-    if(arr.length===0) return;
+  // Modal for editing presets
+  const modal = $("presetModal"), modalInput = $("presetInput"), modalSave = $("modalSave"), modalCancel = $("modalCancel");
+  $("editPresets").addEventListener('click', () => {
+    modalInput.value = loadPresets().join(', ');
+    modal.classList.add('open');
+    modalInput.focus();
+  });
+  modalCancel.addEventListener('click', () => modal.classList.remove('open'));
+  modalSave.addEventListener('click', () => {
+    const next = modalInput.value;
+    const arr = next.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => Number.isFinite(n) && n > 0).map(n => Math.round(n * 100) / 100).slice(0, 12);
+    if (arr.length === 0) return;
     savePresets(arr);
     renderPresets();
+    modal.classList.remove('open');
   });
-  $("resetPresets").addEventListener('click', ()=>{ savePresets(DEFAULT_PRESETS); renderPresets(); });
 
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('service-worker.js').catch(()=>{}); }
+  $("resetPresets").addEventListener('click', () => { savePresets(DEFAULT_PRESETS); renderPresets(); });
+
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('service-worker.js').catch(() => {}); }
 }
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded", init); else init();
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 </script>
 </body>
 </html>
